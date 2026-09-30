@@ -334,8 +334,7 @@ button{font-family:inherit;}
     <div style="display:flex; flex-direction:column; gap:14px; margin-top:6px;">
       <div style="display:flex; gap:8px;">
         <button class="iconbtn" style="flex:1;" onclick="exportAllData()">내보내기</button>
-        <button class="iconbtn" style="flex:1;" onclick="document.getElementById('importAllInput').click()">가져오기</button>
-        <input type="file" id="importAllInput" accept=".json" style="display:none;" onchange="importAllData(this)">
+        <button class="iconbtn" style="flex:1;" onclick="openImportModal()">가져오기</button>
       </div>
       <hr class="sectionDivider" style="margin:0;">
       <div class="settingsRow">
@@ -379,19 +378,33 @@ button{font-family:inherit;}
 <div id="textExportOverlay" class="overlay">
   <div class="modalbox" style="max-width:520px;">
     <button type="button" class="modalCloseX" onclick="closeTextExport()">✕</button>
-    <h3 id="textExportHeading">파일로 저장할 수 없어요</h3>
-    <div id="textExportLinkBox" style="display:none; margin-bottom:14px;">
-      <p style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">아래 링크를 누르면 새 탭에서 파일이 열려요. 그 화면에서 "다른 이름으로 저장"(Ctrl+S 또는 길게 눌러 저장)을 하시면 돼요.</p>
-      <a id="textExportLink" href="#" target="_blank" class="primary" style="display:inline-block; text-decoration:none;">파일 열기 →</a>
-    </div>
-    <p id="textExportCopyHint" style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
-      아래 내용을 복사해서 메모장이나 메일 등에 붙여넣고
-      <strong id="textExportTitle" style="color:var(--text);"></strong> 이름으로 저장해주세요.
+    <h3>내보내기</h3>
+    <p style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
+      아래 코드를 복사해서 보관하세요. 다른 기기에서 "가져오기"에 붙여넣으면 그대로 복원돼요.
     </p>
     <textarea id="textExportArea" class="field" readonly style="width:100%; min-height:200px; font-family:monospace; font-size:.78rem;"></textarea>
     <div class="row">
       <button class="iconbtn" onclick="closeTextExport()">닫기</button>
-      <button class="primary" id="textExportCopyBtn" onclick="copyTextExport()">전체 복사</button>
+      <button class="primary" id="textExportCopyBtn" onclick="copyTextExport()">코드 복사</button>
+    </div>
+  </div>
+</div>
+
+<div id="importOverlay" class="overlay">
+  <div class="modalbox" style="max-width:520px;">
+    <button type="button" class="modalCloseX" onclick="closeImportModal()">✕</button>
+    <h3>가져오기</h3>
+    <p style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
+      "내보내기"에서 복사한 코드를 아래에 붙여넣어주세요.
+    </p>
+    <textarea id="importPasteArea" class="field" style="width:100%; min-height:200px; font-family:monospace; font-size:.78rem;" placeholder="여기에 코드를 붙여넣으세요"></textarea>
+    <div style="margin-top:8px;">
+      <button type="button" class="iconbtn" onclick="document.getElementById('importAllInput').click()" style="font-size:.78rem; padding:6px 10px;">파일에서 가져오기</button>
+      <input type="file" id="importAllInput" accept=".json" style="display:none;" onchange="importAllData(this)">
+    </div>
+    <div class="row">
+      <button class="iconbtn" onclick="closeImportModal()">취소</button>
+      <button class="primary" onclick="importFromPasteText()">가져오기</button>
     </div>
   </div>
 </div>
@@ -1515,17 +1528,7 @@ function pickCalendarDate(dateStr){
   renderCalendar();
 }
 
-async function tryAssetUpload(text, mimeType){
-  try{
-    const assets = await claude.use('assets');
-    if(!assets) return null;
-    const blob = new Blob([text], { type: mimeType });
-    const uploaded = await assets.upload(blob);
-    return uploaded && uploaded.url ? uploaded.url : null;
-  }catch(e){ return null; }
-}
-
-async function exportAllData(){
+function exportAllData(){
   const payload = {
     kind: 'ffxiv-chat-archive-backup',
     version: 1,
@@ -1535,42 +1538,17 @@ async function exportAllData(){
     globalProfiles,
     channelColors
   };
-  const text = JSON.stringify(payload, null, 2);
-  const filename = `연대기_백업_${isoToDateInput(new Date().toISOString())}.json`;
-  try{
-    const downloads = await claude.use('downloads');
-    if(downloads){
-      await downloads.save({ filename, data: text });
-      return;
-    }
-  }catch(e){ /* fall through */ }
-  const url = await tryAssetUpload(text, 'application/json');
-  showTextExportFallback(filename, text, url);
+  const text = JSON.stringify(payload);
+  showTextExportModal(text);
 }
 
-function showTextExportFallback(filename, text, downloadUrl){
+function showTextExportModal(text){
   const overlay = document.getElementById('textExportOverlay');
-  const title = document.getElementById('textExportTitle');
   const area = document.getElementById('textExportArea');
-  const linkBox = document.getElementById('textExportLinkBox');
-  const link = document.getElementById('textExportLink');
-  const copyHint = document.getElementById('textExportCopyHint');
-  const heading = document.getElementById('textExportHeading');
   if(!overlay || !area) return;
-  if(title) title.textContent = filename;
   area.value = text;
-  if(downloadUrl){
-    heading.textContent = '파일 준비됐어요';
-    linkBox.style.display = '';
-    link.href = downloadUrl;
-    copyHint.style.display = 'none';
-  } else {
-    heading.textContent = '파일로 저장할 수 없어요';
-    linkBox.style.display = 'none';
-    copyHint.style.display = '';
-  }
   overlay.classList.add('show');
-  if(!downloadUrl) setTimeout(() => { area.focus(); area.select(); }, 30);
+  setTimeout(() => { area.focus(); area.select(); }, 30);
 }
 function closeTextExport(){
   document.getElementById('textExportOverlay').classList.remove('show');
@@ -1588,62 +1566,70 @@ async function copyTextExport(){
     if(btn){ const orig = btn.textContent; btn.textContent = '복사됨!'; setTimeout(() => { btn.textContent = orig; }, 1500); }
   }catch(e){
     area.focus(); area.select();
-    alert('자동 복사에 실패했어요. 텍스트가 이미 선택되어 있으니 Ctrl+C(또는 Cmd+C)로 복사해주세요.');
+    alert('자동 복사에 실패했어요. 코드가 이미 선택되어 있으니 Ctrl+C(또는 Cmd+C)로 복사해주세요.');
   }
 }
 
+function openImportModal(){
+  const area = document.getElementById('importPasteArea');
+  if(area) area.value = '';
+  document.getElementById('importOverlay').classList.add('show');
+}
+function closeImportModal(){
+  document.getElementById('importOverlay').classList.remove('show');
+}
+function importFromPasteText(){
+  const text = (document.getElementById('importPasteArea').value || '').trim();
+  if(!text){ alert('붙여넣은 코드가 없어요.'); return; }
+  applyImportedBackupText(text);
+}
 function importAllData(input){
   const file = input.files && input.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    let data;
-    try{ data = JSON.parse(reader.result); }
-    catch(e){ alert('이 파일을 읽을 수 없어요. 올바른 백업 파일인지 확인해주세요.'); input.value=''; return; }
-
-    const importedArchives = Array.isArray(data.archives) ? data.archives : [];
-    const existingIds = new Set(archives.map(a => a.id));
-    let addedCount = 0;
-    importedArchives.forEach(a => {
-      if(a && a.id && !existingIds.has(a.id)){
-        archives.push(a);
-        existingIds.add(a.id);
-        addedCount++;
-      }
-    });
-
-    if(data.globalRenames) Object.assign(globalRenames, data.globalRenames);
-    if(data.globalProfiles) Object.assign(globalProfiles, data.globalProfiles);
-    if(data.channelColors){
-      Object.assign(channelColors, data.channelColors);
-      try{ localStorage.setItem('ffxiv_chat_channel_colors', JSON.stringify(channelColors)); }catch(e){}
-    }
-    saveGlobalRenames();
-    saveGlobalProfiles();
-
-    persist();
-    renderSidebar();
-    if(!currentId && archives.length) selectArchive(archives[0].id);
+    applyImportedBackupText(reader.result);
     input.value = '';
-    alert(`가져오기 완료: 새 기록 ${addedCount}개를 추가했어요. (이미 있는 기록은 건너뛰었어요)`);
   };
   reader.readAsText(file);
 }
+function applyImportedBackupText(text){
+  let data;
+  try{ data = JSON.parse(text); }
+  catch(e){ alert('이 코드를 읽을 수 없어요. 올바른 내보내기 코드인지 확인해주세요.'); return; }
 
-async function exportArchive(id){
+  const importedArchives = Array.isArray(data.archives) ? data.archives : [];
+  const existingIds = new Set(archives.map(a => a.id));
+  let addedCount = 0;
+  importedArchives.forEach(a => {
+    if(a && a.id && !existingIds.has(a.id)){
+      archives.push(a);
+      existingIds.add(a.id);
+      addedCount++;
+    }
+  });
+
+  if(data.globalRenames) Object.assign(globalRenames, data.globalRenames);
+  if(data.globalProfiles) Object.assign(globalProfiles, data.globalProfiles);
+  if(data.channelColors){
+    Object.assign(channelColors, data.channelColors);
+    try{ localStorage.setItem('ffxiv_chat_channel_colors', JSON.stringify(channelColors)); }catch(e){}
+  }
+  saveGlobalRenames();
+  saveGlobalProfiles();
+
+  persist();
+  renderSidebar();
+  if(!currentId && archives.length) selectArchive(archives[0].id);
+  closeImportModal();
+  alert(`가져오기 완료: 새 기록 ${addedCount}개를 추가했어요. (이미 있는 기록은 건너뛰었어요)`);
+}
+
+function exportArchive(id){
   const a = archives.find(x => x.id === id);
   if(!a) return;
   const text = a.lines.map(l => l.raw).join('\n');
-  const filename = a.name.replace(/[\\/:*?"<>|]/g,'_') + '.txt';
-  try{
-    const downloads = await claude.use('downloads');
-    if(downloads){
-      await downloads.save({ filename, data: text });
-      return;
-    }
-  }catch(e){ /* fall through */ }
-  const url = await tryAssetUpload(text, 'text/plain');
-  showTextExportFallback(filename, text, url);
+  showTextExportModal(text);
 }
 
 document.addEventListener('click', function(e){
