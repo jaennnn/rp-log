@@ -379,13 +379,13 @@ button{font-family:inherit;}
   <div class="modalbox" style="max-width:520px;">
     <button type="button" class="modalCloseX" onclick="closeTextExport()">✕</button>
     <h3>내보내기</h3>
-    <p style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
-      아래 코드를 복사해서 보관하세요. 다른 기기에서 "가져오기"에 붙여넣으면 그대로 복원돼요.
+    <p id="textExportDesc" style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
+      아래 숫자를 복사해서 보관하세요. 다른 기기에서 "가져오기"에 붙여넣으면 그대로 복원돼요.
     </p>
-    <textarea id="textExportArea" class="field" readonly style="width:100%; min-height:200px; font-family:monospace; font-size:.78rem;"></textarea>
+    <textarea id="textExportArea" class="field" readonly style="width:100%; min-height:200px; font-family:monospace; font-size:.78rem; word-break:break-all;"></textarea>
     <div class="row">
       <button class="iconbtn" onclick="closeTextExport()">닫기</button>
-      <button class="primary" id="textExportCopyBtn" onclick="copyTextExport()">코드 복사</button>
+      <button class="primary" id="textExportCopyBtn" onclick="copyTextExport()">숫자 복사</button>
     </div>
   </div>
 </div>
@@ -395,9 +395,9 @@ button{font-family:inherit;}
     <button type="button" class="modalCloseX" onclick="closeImportModal()">✕</button>
     <h3>가져오기</h3>
     <p style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
-      "내보내기"에서 복사한 코드를 아래에 붙여넣어주세요.
+      "내보내기"에서 복사한 숫자를 아래에 붙여넣어주세요.
     </p>
-    <textarea id="importPasteArea" class="field" style="width:100%; min-height:200px; font-family:monospace; font-size:.78rem;" placeholder="여기에 코드를 붙여넣으세요"></textarea>
+    <textarea id="importPasteArea" class="field" style="width:100%; min-height:200px; font-family:monospace; font-size:.78rem; word-break:break-all;" placeholder="여기에 숫자를 붙여넣으세요"></textarea>
     <div style="margin-top:8px;">
       <button type="button" class="iconbtn" onclick="document.getElementById('importAllInput').click()" style="font-size:.78rem; padding:6px 10px;">파일에서 가져오기</button>
       <input type="file" id="importAllInput" accept=".json" style="display:none;" onchange="importAllData(this)">
@@ -1046,6 +1046,27 @@ function confirmDeleteYes(){
     renderSidebar();
     renderLogView();
     renderPeopleTags();
+  } else if(pendingDelete.type === 'importOverwrite'){
+    const data = pendingImportData;
+    pendingImportData = null;
+    const count = data && Array.isArray(data.archives) ? data.archives.length : 0;
+    if(data){
+      archives = Array.isArray(data.archives) ? data.archives : [];
+      if(data.globalRenames) Object.assign(globalRenames, data.globalRenames);
+      if(data.globalProfiles) Object.assign(globalProfiles, data.globalProfiles);
+      if(data.channelColors){
+        Object.assign(channelColors, data.channelColors);
+        try{ localStorage.setItem('ffxiv_chat_channel_colors', JSON.stringify(channelColors)); }catch(e){}
+      }
+      saveGlobalRenames();
+      saveGlobalProfiles();
+      currentId = archives.length ? archives[0].id : null;
+      persist();
+    }
+    closeConfirm();
+    renderSidebar();
+    renderMain();
+    alert(`가져오기 완료: 기록 ${count}개로 교체했어요.`);
   }
 }
 
@@ -1528,6 +1549,21 @@ function pickCalendarDate(dateStr){
   renderCalendar();
 }
 
+function encodeToDigits(text){
+  const bytes = new TextEncoder().encode(text);
+  let out = '';
+  for(let i = 0; i < bytes.length; i++) out += String(bytes[i]).padStart(3, '0');
+  return out;
+}
+function decodeFromDigits(digits){
+  if(digits.length % 3 !== 0) throw new Error('invalid length');
+  const bytes = new Uint8Array(digits.length / 3);
+  for(let i = 0; i < digits.length; i += 3){
+    bytes[i / 3] = parseInt(digits.slice(i, i + 3), 10);
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 function exportAllData(){
   const payload = {
     kind: 'ffxiv-chat-archive-backup',
@@ -1539,14 +1575,20 @@ function exportAllData(){
     channelColors
   };
   const text = JSON.stringify(payload);
-  showTextExportModal(text);
+  showTextExportModal(encodeToDigits(text), true);
 }
 
-function showTextExportModal(text){
+function showTextExportModal(text, isNumeric){
   const overlay = document.getElementById('textExportOverlay');
   const area = document.getElementById('textExportArea');
+  const desc = document.getElementById('textExportDesc');
+  const copyBtn = document.getElementById('textExportCopyBtn');
   if(!overlay || !area) return;
   area.value = text;
+  if(desc) desc.textContent = isNumeric
+    ? '아래 숫자를 복사해서 보관하세요. 다른 기기에서 "가져오기"에 붙여넣으면 그대로 복원돼요.'
+    : '아래 내용을 복사해서 메모장이나 메일 등에 저장해주세요.';
+  if(copyBtn) copyBtn.textContent = isNumeric ? '숫자 복사' : '전체 복사';
   overlay.classList.add('show');
   setTimeout(() => { area.focus(); area.select(); }, 30);
 }
@@ -1570,6 +1612,7 @@ async function copyTextExport(){
   }
 }
 
+let pendingImportData = null;
 function openImportModal(){
   const area = document.getElementById('importPasteArea');
   if(area) area.value = '';
@@ -1581,55 +1624,50 @@ function closeImportModal(){
 function importFromPasteText(){
   const text = (document.getElementById('importPasteArea').value || '').trim();
   if(!text){ alert('붙여넣은 코드가 없어요.'); return; }
-  applyImportedBackupText(text);
+  requestImportOverwrite(text);
 }
 function importAllData(input){
   const file = input.files && input.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    applyImportedBackupText(reader.result);
+    requestImportOverwrite(reader.result);
     input.value = '';
   };
   reader.readAsText(file);
 }
-function applyImportedBackupText(text){
-  let data;
-  try{ data = JSON.parse(text); }
-  catch(e){ alert('이 코드를 읽을 수 없어요. 올바른 내보내기 코드인지 확인해주세요.'); return; }
-
-  const importedArchives = Array.isArray(data.archives) ? data.archives : [];
-  const existingIds = new Set(archives.map(a => a.id));
-  let addedCount = 0;
-  importedArchives.forEach(a => {
-    if(a && a.id && !existingIds.has(a.id)){
-      archives.push(a);
-      existingIds.add(a.id);
-      addedCount++;
-    }
-  });
-
-  if(data.globalRenames) Object.assign(globalRenames, data.globalRenames);
-  if(data.globalProfiles) Object.assign(globalProfiles, data.globalProfiles);
-  if(data.channelColors){
-    Object.assign(channelColors, data.channelColors);
-    try{ localStorage.setItem('ffxiv_chat_channel_colors', JSON.stringify(channelColors)); }catch(e){}
+function requestImportOverwrite(rawText){
+  const trimmed = (rawText || '').trim();
+  const digitsOnly = trimmed.replace(/\s+/g, '');
+  let jsonText = null;
+  if(/^\d+$/.test(digitsOnly)){
+    try{ jsonText = decodeFromDigits(digitsOnly); }catch(e){ jsonText = null; }
   }
-  saveGlobalRenames();
-  saveGlobalProfiles();
-
-  persist();
-  renderSidebar();
-  if(!currentId && archives.length) selectArchive(archives[0].id);
+  if(jsonText === null) jsonText = trimmed; // 예전 형식(JSON 그대로 붙여넣기)도 지원
+  let data;
+  try{ data = JSON.parse(jsonText); }
+  catch(e){ alert('이 숫자를 읽을 수 없어요. 올바른 내보내기 숫자인지 확인해주세요.'); return; }
+  if(!data || !Array.isArray(data.archives)){
+    alert('올바른 내보내기 숫자가 아니에요.');
+    return;
+  }
+  pendingImportData = data;
   closeImportModal();
-  alert(`가져오기 완료: 새 기록 ${addedCount}개를 추가했어요. (이미 있는 기록은 건너뛰었어요)`);
+  closeSettings();
+  pendingDelete = { type:'importOverwrite', ref: null };
+  document.getElementById('confirmTitle').textContent = '가져오기';
+  document.getElementById('confirmMsg').textContent = `가져오기를 하면 지금 저장된 기록이 모두 사라지고, 가져온 기록 ${data.archives.length}개로 바뀌어요. 계속할까요?`;
+  const yesBtn = document.getElementById('confirmYesBtn');
+  yesBtn.textContent = '가져오기';
+  yesBtn.style.background = '';
+  document.getElementById('confirmOverlay').classList.add('show');
 }
 
 function exportArchive(id){
   const a = archives.find(x => x.id === id);
   if(!a) return;
   const text = a.lines.map(l => l.raw).join('\n');
-  showTextExportModal(text);
+  showTextExportModal(text, false);
 }
 
 document.addEventListener('click', function(e){
