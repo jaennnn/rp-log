@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>연대기 — FFXIV 채팅 아카이브</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 밝은 무채색 팔레트 (태그/닉네임 색상만 유채색) */
+  --bg:#f7f7f7; --panel:#ffffff; --field:#f2f2f2; --line:#e3e3e3; --text:#1f1f1f; --muted:#8c8c8c; --accent:#222222;
+  --font:'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
+  /* 인라인 스타일에서 쓰는 기존 변수 이름은 유지하되 값만 무채색으로 */
+  --ink:#f2f2f2; --ink-2:#ffffff; --parchment:#1f1f1f; --parchment-2:#1f1f1f; --ptext:#1f1f1f;
+  --gold:#222222; --gold-bright:#000000; --wine:#222222;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--font); font-size:15px;
+  display:flex; overflow:hidden; -webkit-font-smoothing:antialiased;
+}
+::selection{background:#d4d4d4; color:#000;}
+button{font-family:inherit;}
+/* ---- sidebar ---- */
+#sidebar{
+  width:280px; min-width:280px; height:100%; background:var(--panel);
+  border-right:1px solid var(--line); display:flex; flex-direction:column;
+  padding-top:calc(env(safe-area-inset-top,0px) + 22px);
+}
+#sidebar h1{
+  font-weight:700; font-size:1.3rem; margin:0 20px 2px; color:#111; letter-spacing:-.01em;
+}
+#sidebar .sub{margin:0 20px 18px; font-size:.78rem; color:var(--muted);}
+#newBtn{
+  margin:0 20px 14px; padding:10px 14px; background:var(--accent); color:#fff;
+  border:none; border-radius:8px; font-family:inherit; font-size:.88rem; font-weight:500;
+  cursor:pointer; transition:background .15s;
+}
+#newBtn:hover{background:#000;}
+#archiveList{list-style:none; margin:0; padding:0 20px 20px; overflow-y:auto; flex:1;}
+#archiveList li{
+  padding:11px 12px; margin-bottom:2px; border-radius:6px; cursor:pointer;
+  border-left:2px solid transparent; border-bottom:1px solid #f0f0f0; transition:background .12s, border-color .12s;
+}
+#archiveList li:last-child{border-bottom:none;}
+#archiveList li:hover{background:#f6f6f6;}
+#archiveList li.active{background:#f0f0f0; border-left-color:var(--accent);}
+#archiveList .name{font-size:.92rem; font-weight:500; color:var(--text); display:block;}
+#archiveList .meta{font-size:.74rem; color:var(--muted); display:block; margin-top:2px;}
+#archiveList .empty{padding:20px 12px; color:var(--muted); font-size:.85rem; line-height:1.6;}
+/* ---- main ---- */
+#main{flex:1; height:100%; overflow-y:auto; padding:calc(env(safe-area-inset-top,0px) + 32px) 40px 40px;}
+#emptyState{max-width:480px; margin:10vh auto; text-align:center; color:var(--muted); line-height:1.6;}
+#emptyState h2{color:#333; font-weight:700; font-size:1.25rem;}
+.page-wrap{max-width:820px; margin:0 auto;}
+.page-head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:22px; flex-wrap:wrap;}
+.page-head h2{font-weight:700; font-size:1.7rem; margin:0; color:#111; letter-spacing:-.01em;}
+.page-head .meta{color:var(--muted); font-size:.8rem; margin-top:4px;}
+.actions{display:flex; gap:8px;}
+.iconbtn{
+  background:#fff; border:1px solid #dcdcdc; color:#555; padding:7px 12px;
+  border-radius:8px; font-family:inherit; font-size:.82rem; cursor:pointer; transition:border-color .12s, color .12s, background .12s;
+}
+.iconbtn:hover{border-color:#999; color:#111; background:#fafafa;}
+.iconbtn svg{display:block; vertical-align:middle;}
+.controls{display:flex; gap:10px; margin:18px 0 14px; flex-wrap:wrap; align-items:center;}
+#search{
+  flex:1; min-width:160px; background:var(--field); border:1px solid transparent; color:var(--text);
+  padding:9px 12px; border-radius:8px; font-family:inherit; font-size:.88rem;
+}
+#search:focus{outline:none; border-color:#bdbdbd; background:#fff;}
+.field{
+  background:var(--field); border:1px solid transparent; color:var(--text);
+  padding:7px 11px; border-radius:8px; font-family:inherit; font-size:.88rem;
+}
+.field:focus{outline:none; border-color:#bdbdbd; background:#fff;}
+.tagsInput{
+  display:flex; flex-wrap:wrap; align-items:center; gap:5px;
+  background:var(--field); border:1px solid transparent; border-radius:8px; padding:5px 8px;
+}
+.tagsInput input{
+  border:none; outline:none; background:transparent; color:var(--text);
+  font-family:inherit; font-size:.88rem; flex:1; min-width:100px; padding:3px 2px;
+}
+.personChip{
+  display:inline-flex; align-items:center; gap:4px; background:#fff; border:1px solid #dcdcdc;
+  border-radius:12px; padding:3px 10px; font-size:.8rem; color:#333; white-space:nowrap;
+}
+.personChip .personChipName{cursor:pointer;}
+.personChip .personChipName:hover{text-decoration:underline;}
+.metaRow{display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap;}
+.metaRow label{color:var(--muted); font-size:.8rem;}
+#descFieldInline{width:100%; min-height:44px; resize:none; margin-top:8px; line-height:1.5;}
+.sectionDivider{border:none; border-top:1px solid #ececec; margin:14px 0;}
+.chips{display:flex; gap:4px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none;}
+.chips::-webkit-scrollbar{display:none;}
+#chipsBox{min-width:0;}
+.chip{
+  font-size:.7rem; padding:3px 7px; border-radius:11px; border:1px solid #dcdcdc; color:#777; white-space:nowrap;
+  cursor:pointer; user-select:none; background:#fff; transition:border-color .12s; flex-shrink:0;
+}
+.chip:hover{border-color:#aaa;}
+.chip.on{color:#111; border-color:transparent;}
+/* ---- log page ---- */
+.parchment{
+  background:var(--panel); color:var(--text); border-radius:12px; padding:22px 26px;
+  box-shadow:0 1px 3px rgba(0,0,0,.05); border:1px solid var(--line);
+}
+.logToolbarInner{display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #eee;}
+.toolbarCount{color:var(--muted); font-size:.8rem;}
+.toolbarBtn{background:#fff; border:1px solid #d8d8d8; color:#444; padding:5px 11px; border-radius:8px; font-family:inherit; font-size:.8rem; cursor:pointer;}
+.toolbarBtn:hover{border-color:#999; background:#f7f7f7;}
+.toolbarBtn.danger{color:#111; border-color:#aaa;}
+.toolbarBtn.danger:hover{background:#efefef;}
+.toolbarBtn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+.toolbarIconBtn{background:transparent; border:none; color:#aaa; padding:4px 6px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center;}
+.toolbarIconBtn:hover{color:#222;}
+.toolbarIconBtn.active{color:#111;}
+.logline{
+  display:flex; align-items:baseline; gap:10px;
+  padding:7px 0; border-bottom:1px solid rgba(0,0,0,.055); line-height:1.55; font-size:.94rem;
+}
+.logline:last-child{border-bottom:none;}
+.logline .time{order:var(--time-order, 5); color:#a3a3a3; font-size:.74rem; white-space:nowrap; flex:0 0 3.6rem; margin-right:-5px;}
+.logline .tag{order:var(--tag-order, 0); font-size:.7rem; font-weight:700; padding:1px 6px; border-radius:8px; letter-spacing:.01em; flex:0 0 3.4rem; max-width:3.4rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; cursor:pointer;}
+.logline .tag:hover{filter:brightness(1.1);}
+.logline .speaker{order:2; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; overflow:hidden; flex:0 0 5.2rem; text-align:left;}
+.logline .speakerNameText{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-decoration:underline; text-decoration-color:transparent; text-underline-offset:3px; transition:text-decoration-color .12s;}
+.logline .speaker:hover .speakerNameText{text-decoration-color:currentColor;}
+.speakerPhoto{width:16px; height:16px; object-fit:cover; border-radius:2px; flex-shrink:0; display:block;}
+.photoPreview{width:44px; height:44px; border-radius:4px; background:var(--field); background-size:cover; background-position:center; flex-shrink:0; border:1px solid var(--line);}
+.rosterRow{display:flex; align-items:center; gap:10px; padding:8px; border-radius:8px; cursor:pointer; transition:background .12s;}
+.rosterRow:hover{background:var(--field);}
+.rosterPhoto{width:36px; height:36px; border-radius:4px; background-size:cover; background-position:center; flex-shrink:0;}
+.rosterInfo{min-width:0; flex:1;}
+.rosterName{font-weight:600; font-size:.92rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.rosterMeta{font-size:.76rem; color:var(--muted); margin-top:1px;}
+.rosterNotes{font-size:.76rem; color:#999; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.logline .speaker:empty{cursor:default;}
+.logline .speaker:hover{text-decoration-color:currentColor;}
+.logline .msg{order:3; display:flex; align-items:baseline; gap:8px; min-width:0; flex:1 1 auto;}
+.logline .msgText{flex:1; min-width:0;}
+.logline .lineActions{display:flex; gap:5px; flex-shrink:0; opacity:0; transition:opacity .12s;}
+.logline:hover .lineActions{opacity:1;}
+.logline .lineActions button{background:transparent; border:none; cursor:pointer; font-size:.82rem; color:#aaa; padding:0 2px; line-height:1;}
+.logline .lineActions button:hover{color:#111;}
+.logline.emote .msg{font-style:italic;}
+.logline.lineSelected{background:#e8e8e8; border-radius:4px;}
+.parchment.select-mode .logline{cursor:pointer;}
+.parchment.select-mode .logline:hover{background:#f4f4f4;}
+.parchment.select-mode .logline.lineSelected:hover{background:#e8e8e8;}
+@media (hover:none){
+  .logline .lineActions{opacity:.55;}
+}
+.parchment.hide-tags .logline .tag{display:none;}
+.parchment.hide-time .logline .time{display:none;}
+.noresult{color:var(--muted); text-align:center; padding:30px 0;}
+/* ---- modal ---- */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50; padding:20px;}
+.overlay.show{display:flex;}
+.modalbox{
+  width:100%; max-width:560px; background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:24px; max-height:88vh; overflow-y:auto; box-shadow:0 12px 40px rgba(0,0,0,.16); position:relative;
+}
+.modalCloseX{position:absolute; top:14px; right:14px; background:transparent; border:none; color:#999; font-size:1.1rem; line-height:1; padding:4px; cursor:pointer;}
+.modalCloseX:hover{color:#111;}
+.modalbox h3{font-weight:700; color:#111; margin:0 0 14px; font-size:1.05rem;}
+.modalbox label{display:block; font-size:.8rem; color:#777; margin:14px 0 6px;}
+.modalbox input[type=text], .modalbox textarea{
+  width:100%; background:var(--field); border:1px solid transparent; color:var(--text); border-radius:8px;
+  padding:9px 12px; font-family:inherit; font-size:.9rem;
+}
+.modalbox input[type=text]:focus, .modalbox textarea:focus{outline:none; border-color:#bdbdbd; background:#fff;}
+.modalbox textarea{min-height:180px; resize:vertical; line-height:1.5;}
+.modalbox input[type=file]{color:var(--muted); font-size:.82rem;}
+.modalbox .row{display:flex; gap:10px; justify-content:flex-end; margin-top:20px;}
+.modalbox .primary{background:var(--accent); color:#fff; border:none; padding:9px 18px; border-radius:8px; font-family:inherit; font-size:.88rem; font-weight:500; cursor:pointer;}
+.modalbox .primary:hover{background:#000;}
+#parseHint{font-size:.76rem; color:var(--muted); margin-top:6px; line-height:1.55;}
+.settingsRow{display:flex; align-items:center; justify-content:space-between; gap:10px; height:28px;}
+.settingsRow span{color:var(--text); font-size:.9rem;}
+.switch{position:relative; display:inline-block; width:38px; height:22px; flex-shrink:0;}
+.switch input{opacity:0; width:0; height:0;}
+.switch .slider{position:absolute; inset:0; background:#d4d4d4; border-radius:25px; cursor:pointer; transition:background .18s;}
+.switch .slider:before{content:""; position:absolute; height:16px; width:16px; left:3px; top:3px; background:#fff; border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:transform .18s;}
+.switch input:checked + .slider{background:var(--accent);}
+.switch input:checked + .slider:before{transform:translateX(16px);}
+.posGroup{display:flex; gap:6px;}
+.posBtn{background:#fff; border:1px solid #d8d8d8; color:#777; padding:0 10px; height:22px; line-height:20px; box-sizing:border-box; border-radius:11px; font-family:inherit; font-size:.74rem; cursor:pointer;}
+.posBtn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+/* ---- mobile ---- */
+#drawerToggle{display:none;}
+@media (max-width:820px){
+  #sidebar{position:fixed; left:0; top:0; z-index:40; transform:translateX(-100%); transition:transform .2s; box-shadow:8px 0 24px rgba(0,0,0,.14);}
+  #sidebar.open{transform:translateX(0);}
+  #drawerToggle{
+    display:block; position:fixed; top:calc(env(safe-area-inset-top,0px) + 14px); left:14px; z-index:41;
+    background:#fff; border:1px solid #dcdcdc; color:#333; border-radius:8px;
+    padding:7px 11px; font-family:inherit; font-size:.85rem; cursor:pointer;
+  }
+  #main{padding:calc(env(safe-area-inset-top,0px) + 64px) 18px 30px;}
+  .parchment{padding:16px 14px;}
+  .logline{gap:7px; font-size:.9rem;}
+  .logline .time{flex-basis:2.8rem;}
+  .logline .tag{flex-basis:3.0rem; max-width:3.0rem;}
+  .logline .speaker{flex-basis:4.4rem;}
+}
+</style>
+</head>
+<body>
+
+<button id="drawerToggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰ 기록</button>
+
+<div id="sidebar">
+  <div style="display:flex; align-items:center; justify-content:space-between; padding-right:20px;">
+    <h1>연대기</h1>
+    <div style="display:flex; gap:4px;">
+      <button class="iconbtn" title="인물 목록" onclick="openPeopleRoster()" style="padding:6px 9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
+      <button class="iconbtn" title="전체 설정" onclick="openSettings()" style="padding:6px 9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15 1.65 1.65 0 0 0 3.09 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.29l.06.06A1.65 1.65 0 0 0 8.92 4.6 1.65 1.65 0 0 0 9.91 3.09V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.63.99 1.03 1.69 1.06H21a2 2 0 0 1 0 4h-.09A1.65 1.65 0 0 0 19.4 15z"/></svg></button>
+    </div>
+  </div>
+  <p class="sub">파이널판타지14 채팅 아카이브</p>
+  <button id="newBtn" onclick="openModal()">+ 새 기록 추가</button>
+  <input type="text" class="field" id="personSearchInput" placeholder="인물로 검색..." style="margin:0 20px 12px; width:calc(100% - 40px);" oninput="onPersonSearch(this.value)">
+  <ul id="archiveList"></ul>
+</div>
+
+<div id="main"></div>
+
+<div id="overlay" class="overlay">
+  <div id="modal" class="modalbox">
+    <h3>새 기록 추가</h3>
+    <label for="nameInput">기록 이름</label>
+    <input type="text" id="nameInput">
+    <label for="dateInput">날짜</label>
+    <input type="text" id="dateInput" placeholder="YYYY-MM-DD" inputmode="numeric">
+    <label for="placeInput">장소 (선택)</label>
+    <input type="text" id="placeInput">
+    <label for="descInput">설명 (선택)</label>
+    <textarea id="descInput" style="min-height:60px;" placeholder="이 기록에 대한 간단한 메모를 남겨보세요."></textarea>
+    <label for="fileInput">로그 파일 업로드 (선택)</label>
+    <input type="file" id="fileInput" accept=".txt,.log">
+    <label for="textInput">또는 채팅 로그 붙여넣기</label>
+    <textarea id="textInput" placeholder="[21:15:32][Party] 캐릭터명: 안녕하세요..."></textarea>
+    <p id="parseHint">시간, 채널([Party] 등), 이름, 메시지가 포함된 줄을 자동으로 인식합니다. 형식이 달라도 원문 그대로 보존되니 걱정 마세요.</p>
+    <div class="row">
+      <button class="iconbtn" onclick="closeModal()">취소</button>
+      <button class="primary" onclick="saveArchive()">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirmOverlay" class="overlay">
+  <div class="modalbox" style="max-width:380px;">
+    <h3 id="confirmTitle">기록 삭제</h3>
+    <p id="confirmMsg" style="color:var(--parchment); font-size:.95rem; line-height:1.6; margin:0;"></p>
+    <div class="row">
+      <button class="iconbtn" onclick="closeConfirm()">취소</button>
+      <button class="primary" id="confirmYesBtn" onclick="confirmDeleteYes()">삭제하기</button>
+    </div>
+  </div>
+</div>
+
+<div id="renameOverlay" class="overlay">
+  <div class="modalbox" style="max-width:380px;">
+    <h3>인물 정보</h3>
+    <div style="display:flex; align-items:center; gap:3px;">
+      <label for="renameInput" style="flex-shrink:0; width:3.6em; margin:0;">이름</label>
+      <input type="text" id="renameInput" style="flex:1;" onkeydown="if(event.key==='Enter') confirmRename();">
+      <input type="color" id="renameColor" style="width:36px; height:36px; padding:2px; border:1px solid var(--line); border-radius:4px; background:var(--ink); cursor:pointer; flex-shrink:0;">
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+      <label style="flex-shrink:0; width:3.6em; margin:0;">사진</label>
+      <div id="renamePhotoPreview" class="photoPreview"></div>
+      <button type="button" class="iconbtn" onclick="document.getElementById('renamePhotoInput').click()" style="padding:6px 10px; font-size:.78rem;">선택</button>
+      <button type="button" class="iconbtn" onclick="removeRenamePhoto()" style="padding:6px 10px; font-size:.78rem;">제거</button>
+      <input type="file" id="renamePhotoInput" accept="image/*" style="display:none;" onchange="handleRenamePhotoSelect(this)">
+    </div>
+    <div style="display:flex; align-items:center; gap:3px; margin-top:10px;">
+      <label for="renameOriginal" style="flex-shrink:0; width:3.6em; margin:0;">닉네임</label>
+      <input type="text" id="renameOriginal" style="flex:1;">
+    </div>
+    <div style="display:flex; align-items:center; gap:3px; margin-top:10px;">
+      <label for="renameAge" style="flex-shrink:0; width:3.6em; margin:0;">나이</label>
+      <input type="text" id="renameAge" style="flex:1;">
+    </div>
+    <div style="display:flex; align-items:center; gap:3px; margin-top:10px;">
+      <label for="renameJob" style="flex-shrink:0; width:3.6em; margin:0;">직업</label>
+      <input type="text" id="renameJob" style="flex:1;">
+    </div>
+    <div style="display:flex; align-items:flex-start; gap:3px; margin-top:10px;">
+      <label for="renamePersonInfo" style="flex-shrink:0; width:3.6em; margin:0; padding-top:9px;">메모</label>
+      <textarea id="renamePersonInfo" style="flex:1; min-height:60px;" placeholder="이 인물에 대한 메모"></textarea>
+    </div>
+    <div class="row">
+      <button class="iconbtn" onclick="closeRename()">취소</button>
+      <button class="primary" onclick="confirmRename()">적용</button>
+    </div>
+  </div>
+</div>
+
+<div id="tagPickerOverlay" class="overlay">
+  <div class="modalbox" style="max-width:340px;">
+    <h3>채널 태그 지정</h3>
+    <p style="color:var(--muted); font-size:.85rem; margin:0 0 12px;">이 줄에만 적용돼요. 원하는 채널을 선택하세요.</p>
+    <div id="tagPickerList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+    <div class="row">
+      <button class="iconbtn" onclick="closeTagPicker()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div id="editLineOverlay" class="overlay">
+  <div class="modalbox" style="max-width:480px;">
+    <h3>대사 수정</h3>
+    <label for="editLineInput">내용</label>
+    <textarea id="editLineInput" style="min-height:100px;"></textarea>
+    <div class="row">
+      <button class="iconbtn" onclick="closeEditLine()">취소</button>
+      <button class="primary" onclick="confirmEditLine()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div id="settingsOverlay" class="overlay">
+  <div class="modalbox" style="max-width:340px;">
+    <button type="button" class="modalCloseX" onclick="closeSettings()">✕</button>
+    <h3>설정</h3>
+    <div style="display:flex; flex-direction:column; gap:14px; margin-top:6px;">
+      <div style="display:flex; gap:8px;">
+        <button class="iconbtn" style="flex:1;" onclick="exportAllData()">내보내기</button>
+        <button class="iconbtn" style="flex:1;" onclick="document.getElementById('importAllInput').click()">가져오기</button>
+        <input type="file" id="importAllInput" accept=".json" style="display:none;" onchange="importAllData(this)">
+      </div>
+      <hr class="sectionDivider" style="margin:0;">
+      <div class="settingsRow">
+        <span>태그 표시</span>
+        <label class="switch"><input type="checkbox" id="settingsTagSwitch" onchange="toggleTags()"><span class="slider"></span></label>
+      </div>
+      <div class="settingsRow">
+        <span>시간 표시</span>
+        <label class="switch"><input type="checkbox" id="settingsTimeSwitch" onchange="toggleTime()"><span class="slider"></span></label>
+      </div>
+      <div class="settingsRow">
+        <span>태그 위치</span>
+        <div class="posGroup">
+          <button class="posBtn" data-group="tag" data-pos="left" onclick="setTagPosition('left')">왼쪽</button>
+          <button class="posBtn" data-group="tag" data-pos="right" onclick="setTagPosition('right')">오른쪽</button>
+        </div>
+      </div>
+      <div class="settingsRow">
+        <span>시간 위치</span>
+        <div class="posGroup">
+          <button class="posBtn" data-group="time" data-pos="left" onclick="setTimePosition('left')">왼쪽</button>
+          <button class="posBtn" data-group="time" data-pos="right" onclick="setTimePosition('right')">오른쪽</button>
+        </div>
+      </div>
+
+      <div style="color:var(--muted); font-size:.85rem; margin-top:4px;">채널 색상</div>
+      <div id="channelColorList" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="peopleRosterOverlay" class="overlay">
+  <div class="modalbox" style="max-width:460px;">
+    <button type="button" class="modalCloseX" onclick="closePeopleRoster()">✕</button>
+    <h3>인물 목록</h3>
+    <input type="text" class="field" id="rosterSearchInput" placeholder="이름으로 검색..." style="width:100%; margin-bottom:12px;" oninput="renderPeopleRoster()">
+    <div id="peopleRosterList" style="display:flex; flex-direction:column; gap:4px; max-height:60vh; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<div id="textExportOverlay" class="overlay">
+  <div class="modalbox" style="max-width:520px;">
+    <button type="button" class="modalCloseX" onclick="closeTextExport()">✕</button>
+    <h3 id="textExportHeading">파일로 저장할 수 없어요</h3>
+    <div id="textExportLinkBox" style="display:none; margin-bottom:14px;">
+      <p style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">아래 링크를 누르면 새 탭에서 파일이 열려요. 그 화면에서 "다른 이름으로 저장"(Ctrl+S 또는 길게 눌러 저장)을 하시면 돼요.</p>
+      <a id="textExportLink" href="#" target="_blank" class="primary" style="display:inline-block; text-decoration:none;">파일 열기 →</a>
+    </div>
+    <p id="textExportCopyHint" style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
+      아래 내용을 복사해서 메모장이나 메일 등에 붙여넣고
+      <strong id="textExportTitle" style="color:var(--text);"></strong> 이름으로 저장해주세요.
+    </p>
+    <textarea id="textExportArea" class="field" readonly style="width:100%; min-height:200px; font-family:monospace; font-size:.78rem;"></textarea>
+    <div class="row">
+      <button class="iconbtn" onclick="closeTextExport()">닫기</button>
+      <button class="primary" id="textExportCopyBtn" onclick="copyTextExport()">전체 복사</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CHANNELS = {
+  say:{label:'말하기', color:'#555555'},
+  shout:{label:'외치기', color:'#b5501a'},
+  yell:{label:'떠들기', color:'#a8860a'},
+  party:{label:'파티', color:'#1c6fa5'},
+  alliance:{label:'연합', color:'#c9720f'},
+  fc:{label:'부대', color:'#2f7d4f'},
+  linkshell:{label:'링크셸', color:'#8a4b8a'},
+  cwlinkshell:{label:'서초링', color:'#7a3fa0'},
+  tell:{label:'귓속말', color:'#d6488f'},
+  emote:{label:'감정표현', color:'#2ea3c4'},
+  pvp:{label:'PvP', color:'#a51c1c'},
+  other:{label:'기타', color:'#8a8a8a'}
+};
+
+let archives = [];
+let currentId = null;
+let activeFilters = new Set(Object.keys(CHANNELS));
+let searchTerm = '';
+let showTags = true;
+let showTime = true;
+let tagPosition = 'left';
+let timePosition = 'right';
+let globalRenames = {}; // { 예전이름: 새이름 } — 새로 추가하는 로그에도 자동 적용
+let channelColors = {}; // { 채널key: 사용자 지정 색상 } — 기본 CHANNELS 색상을 덮어씀
+
+function loadChannelColors(){
+  try{ channelColors = JSON.parse(localStorage.getItem('ffxiv_chat_channel_colors') || '{}'); }
+  catch(e){ channelColors = {}; }
+}
+function getChannelColor(key){
+  return channelColors[key] || CHANNELS[key].color;
+}
+function getContrastTextColor(hex){
+  if(!hex) return '#ffffff';
+  const clean = hex.replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map(ch => ch + ch).join('') : clean;
+  const r = parseInt(full.substr(0,2), 16), g = parseInt(full.substr(2,2), 16), b = parseInt(full.substr(4,2), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#111111' : '#ffffff';
+}
+function setChannelColor(key, color){
+  channelColors[key] = color;
+  try{ localStorage.setItem('ffxiv_chat_channel_colors', JSON.stringify(channelColors)); }catch(e){}
+  renderLogView();
+}
+
+function loadTagPref(){
+  try{ showTags = localStorage.getItem('ffxiv_chat_show_tags') !== '0'; }
+  catch(e){ showTags = true; }
+  try{ showTime = localStorage.getItem('ffxiv_chat_show_time') !== '0'; }
+  catch(e){ showTime = true; }
+  try{ tagPosition = localStorage.getItem('ffxiv_chat_tag_pos') || 'left'; }
+  catch(e){ tagPosition = 'left'; }
+  try{ timePosition = localStorage.getItem('ffxiv_chat_time_pos') || 'right'; }
+  catch(e){ timePosition = 'right'; }
+}
+function toggleTags(){
+  showTags = !showTags;
+  try{ localStorage.setItem('ffxiv_chat_show_tags', showTags ? '1' : '0'); }catch(e){}
+  renderLogView();
+}
+function toggleTime(){
+  showTime = !showTime;
+  try{ localStorage.setItem('ffxiv_chat_show_time', showTime ? '1' : '0'); }catch(e){}
+  renderLogView();
+}
+function setTagPosition(pos){
+  tagPosition = pos;
+  try{ localStorage.setItem('ffxiv_chat_tag_pos', pos); }catch(e){}
+  renderLogView();
+}
+function setTimePosition(pos){
+  timePosition = pos;
+  try{ localStorage.setItem('ffxiv_chat_time_pos', pos); }catch(e){}
+  renderLogView();
+}
+
+function openPeopleRoster(){
+  const input = document.getElementById('rosterSearchInput');
+  if(input) input.value = '';
+  renderPeopleRoster();
+  document.getElementById('peopleRosterOverlay').classList.add('show');
+}
+function closePeopleRoster(){
+  document.getElementById('peopleRosterOverlay').classList.remove('show');
+}
+function openRenameFromRoster(name){
+  closePeopleRoster();
+  openRename(name);
+}
+function renderPeopleRoster(){
+  const list = document.getElementById('peopleRosterList');
+  if(!list) return;
+  const term = (document.getElementById('rosterSearchInput').value || '').trim().toLowerCase();
+  const getOriginals = (name) => Object.keys(globalRenames).filter(k => k !== name && resolveGlobalName(k) === name);
+  const names = Object.keys(globalProfiles)
+    .filter(n => {
+      if(!term) return true;
+      if(n.toLowerCase().includes(term)) return true;
+      return getOriginals(n).some(o => o.toLowerCase().includes(term));
+    })
+    .sort((a, b) => a.localeCompare(b, 'ko'));
+  if(!names.length){
+    list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:16px 4px;">저장된 인물 정보가 없어요. 대사 속 이름을 클릭해서 정보를 추가해보세요.</div>';
+    return;
+  }
+  list.innerHTML = names.map(name => {
+    const prof = globalProfiles[name] || {};
+    const meta = [prof.age, prof.job].filter(Boolean).join(' · ');
+    const notesPreview = (prof.notes || '').split('\n')[0];
+    return `<div class="rosterRow" onclick="openRenameFromRoster('${name.replace(/'/g, "\\'")}')">
+      <div class="rosterPhoto" style="${prof.photo ? `background-image:url(${prof.photo});` : 'background:#d9d9d9;'}"></div>
+      <div class="rosterInfo">
+        <div class="rosterName" style="color:${prof.color || 'inherit'};">${escapeHtml(name)}</div>
+        ${meta ? `<div class="rosterMeta">${escapeHtml(meta)}</div>` : ''}
+        ${notesPreview ? `<div class="rosterNotes">${escapeHtml(notesPreview)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openSettings(){
+  refreshSettingsLabels();
+  populateChannelColorList();
+  document.getElementById('settingsOverlay').classList.add('show');
+}
+function populateChannelColorList(){
+  const list = document.getElementById('channelColorList');
+  if(!list) return;
+  list.innerHTML = Object.entries(CHANNELS).map(([key,c]) => `
+    <div class="settingsRow" style="height:auto;">
+      <span>${c.label}</span>
+      <input type="color" value="${getChannelColor(key)}" onchange="setChannelColor('${key}', this.value)" style="width:34px; height:22px; padding:1px; border:1px solid var(--line); border-radius:4px; background:var(--ink); cursor:pointer;">
+    </div>
+  `).join('');
+}
+function closeSettings(){
+  document.getElementById('settingsOverlay').classList.remove('show');
+}
+function refreshSettingsLabels(){
+  const tagSwitch = document.getElementById('settingsTagSwitch');
+  if(tagSwitch) tagSwitch.checked = showTags;
+  const timeSwitch = document.getElementById('settingsTimeSwitch');
+  if(timeSwitch) timeSwitch.checked = showTime;
+  document.querySelectorAll('#settingsOverlay .posBtn[data-group="tag"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.pos === tagPosition);
+  });
+  document.querySelectorAll('#settingsOverlay .posBtn[data-group="time"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.pos === timePosition);
+  });
+}
+
+function isoToDateInput(iso){
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function updateArchiveDate(value){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  const iso = dateInputToISO(value);
+  const input = document.getElementById('dateFieldInline');
+  if(!iso){
+    if(input) input.value = isoToDateInput(a.createdAt);
+    return;
+  }
+  a.createdAt = iso;
+  if(input) input.value = isoToDateInput(iso);
+  persist();
+  renderLogView();
+  renderSidebar();
+}
+function updateArchiveDesc(value){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  a.description = value.trim();
+  persist();
+  const disp = document.getElementById('descDisplay');
+  if(disp) disp.innerHTML = a.description ? escapeHtml(a.description) : '<span style="color:var(--muted);">없음</span>';
+  renderSidebar();
+}
+
+function toggleTitleEdit(){
+  const h2 = document.getElementById('titleDisplay');
+  const input = document.getElementById('titleFieldInline');
+  if(!h2 || !input) return;
+  h2.style.display = 'none';
+  input.style.display = '';
+  input.focus();
+  input.select();
+}
+function updateArchiveName(value){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  const clean = (value || '').trim() || '이름 없는 기록';
+  a.name = clean;
+  persist();
+  const h2 = document.getElementById('titleDisplay');
+  const input = document.getElementById('titleFieldInline');
+  if(h2){ h2.textContent = clean; h2.style.display = ''; }
+  if(input){ input.value = clean; input.style.display = 'none'; }
+  renderSidebar();
+}
+
+
+function updateArchivePlace(value){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  a.place = value.trim();
+  persist();
+  const disp = document.getElementById('placeDisplay');
+  if(disp) disp.innerHTML = a.place ? escapeHtml(a.place) : '<span style="color:var(--muted);">미지정</span>';
+  renderSidebar();
+}
+
+function renderPeopleChipsHTML(people){
+  return (people || []).map(p => `<span class="personChip" data-person="${escapeHtml(p)}"><span class="personChipName" onclick="openRename(this.parentElement.dataset.person)">${escapeHtml(p)}</span></span>`).join('');
+}
+function renderPeopleTags(){
+  const a = archives.find(x => x.id === currentId);
+  const box = document.getElementById('peopleTags');
+  if(box && a) box.innerHTML = renderPeopleChipsHTML(a.people);
+}
+function loadGlobalRenames(){
+  try{ globalRenames = JSON.parse(localStorage.getItem('ffxiv_chat_global_renames') || '{}'); }
+  catch(e){ globalRenames = {}; }
+}
+function saveGlobalRenames(){
+  try{ localStorage.setItem('ffxiv_chat_global_renames', JSON.stringify(globalRenames)); }
+  catch(e){}
+}
+function resolveGlobalName(name){
+  let cur = name;
+  const seen = new Set();
+  while(globalRenames[cur] && !seen.has(cur)){
+    seen.add(cur);
+    cur = globalRenames[cur];
+  }
+  return cur;
+}
+
+let globalProfiles = {}; // { 표시이름: { color, notes } } — 다른 로그에도 동일하게 적용
+function loadGlobalProfiles(){
+  try{ globalProfiles = JSON.parse(localStorage.getItem('ffxiv_chat_person_profiles') || '{}'); }
+  catch(e){ globalProfiles = {}; }
+}
+function saveGlobalProfiles(){
+  try{ localStorage.setItem('ffxiv_chat_person_profiles', JSON.stringify(globalProfiles)); }
+  catch(e){}
+}
+function getPersonColor(name){
+  return (globalProfiles[name] && globalProfiles[name].color) || null;
+}
+function getPersonAge(name){
+  return (globalProfiles[name] && globalProfiles[name].age) || '';
+}
+function getPersonJob(name){
+  return (globalProfiles[name] && globalProfiles[name].job) || '';
+}
+function getPersonNotes(name){
+  return (globalProfiles[name] && globalProfiles[name].notes) || '';
+}
+function getPersonPhoto(name){
+  return (globalProfiles[name] && globalProfiles[name].photo) || '';
+}
+
+function loadArchives(){
+  try{
+    const raw = localStorage.getItem('ffxiv_chat_archives');
+    archives = raw ? JSON.parse(raw) : [];
+  }catch(e){ archives = []; }
+}
+function persist(){
+  try{ localStorage.setItem('ffxiv_chat_archives', JSON.stringify(archives)); }
+  catch(e){ console.error('저장 실패', e); }
+}
+
+function normalizeChannel(tag){
+  if(!tag) return null;
+  const trimmed = tag.trim();
+  if(/^\d{1,3}$/.test(trimmed)) return 'linkshell';
+  const t = trimmed.toLowerCase();
+  if(t.includes('cwls') || t.includes('crossworld') || t.includes('크로스월드') || t.includes('서초링')) return 'cwlinkshell';
+  if(t.includes('ls') || t.includes('linkshell') || t.includes('링쉘') || t.includes('링크쉘') || t.includes('링크셸')) return 'linkshell';
+  if(t.includes('alliance') || t.includes('동맹') || t.includes('연합')) return 'alliance';
+  if(t.includes('party') || t.includes('파티')) return 'party';
+  if(t.includes('fc') || t.includes('company') || t.includes('컴퍼니') || t.includes('부대')) return 'fc';
+  if(t.includes('tell') || t.includes('귓')) return 'tell';
+  if(t.includes('shout') || t.includes('외치')) return 'shout';
+  if(t.includes('yell') || t.includes('소리')) return 'yell';
+  if(t.includes('say') || t.includes('말하')) return 'say';
+  if(t.includes('emote') || t.includes('em') || t.includes('감정')) return 'emote';
+  if(t.includes('pvp')) return 'pvp';
+  return 'other';
+}
+
+const WORLD_SUFFIXES = ['톤베리','펜리르','초코보','모그리','카벙클'];
+function extractNameAndWorld(name){
+  let n = name.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim();
+  let world = '';
+  for(const w of WORLD_SUFFIXES){
+    if(n.endsWith(w)){
+      world = w;
+      n = n.slice(0, n.length - w.length).trim();
+      break;
+    }
+  }
+  return { clean: n, world };
+}
+function cleanSpeakerName(name){
+  return extractNameAndWorld(name).clean;
+}
+
+function parseLog(text){
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+  const tellArrow = /^\s*(?:\[?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:[APap][Mm])?)\]?\s*)?>>\s*([^,>]+?)\s*,\s*[^,>]+?\s*>>\s*(.*)$/;
+  const tellSent = /^\s*(?:\[?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:[APap][Mm])?)\]?\s*)?>>\s*([^\s,>]{1,32})\s+(.*)$/;
+  const tellReceived = /^\s*(?:\[?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:[APap][Mm])?)\]?\s*)?([^\s,>\[\]]{1,32})\s*>>\s*(.*)$/;
+  const doubleParen = /^\s*(?:\[?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:[APap][Mm])?)\]?\s*)?\(\(\s*([^()]{1,32}?)\s*\)\)\s*(.*)$/;
+  const singleParen = /^\s*(?:\[?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:[APap][Mm])?)\]?\s*)?\(\s*([^()]{1,32}?)\s*\)\s*(.*)$/;
+  const angleName = /^\s*(?:\[?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:[APap][Mm])?)\]?\s*)?(?:\[([^\]]+)\]\s*)?<([^>]{1,32})>\s*(.*)$/;
+  const withColon = /^\s*(?:\[?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:[APap][Mm])?)\]?\s*)?(?:\[([^\]]+)\]\s*)?([^:\[\]]{1,32}?):\s*(.*)$/;
+  const tagOnly = /^\s*(?:\[?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:[APap][Mm])?)\]?\s*)?\[([^\]]+)\]\s*(.*)$/;
+  return lines.map(raw => {
+    // ">>보낸사람, 받는사람>> 내용" 형식은 귓속말로 처리 (다른 규칙보다 먼저 검사)
+    const mt = raw.match(tellArrow);
+    if(mt && mt[2] && mt[2].trim().length){
+      const nw = extractNameAndWorld(mt[2]);
+      return {
+        time: mt[1] ? mt[1].trim() : '',
+        channel: 'tell',
+        speaker: nw.clean,
+        originalWorld: nw.world,
+        message: mt[3].trim(),
+        raw
+      };
+    }
+    // ">>이름 내용" = 내가 보낸 귓속말 → 발화자는 '나'
+    const ms = raw.match(tellSent);
+    if(ms && ms[2] && ms[2].trim().length){
+      return {
+        time: ms[1] ? ms[1].trim() : '',
+        channel: 'tell',
+        speaker: '나',
+        message: ms[3].trim(),
+        raw
+      };
+    }
+    // "이름>> 내용" = 받은 귓속말 → 발화자는 상대 이름
+    const mr = raw.match(tellReceived);
+    if(mr && mr[2] && mr[2].trim().length){
+      const nw = extractNameAndWorld(mr[2]);
+      return {
+        time: mr[1] ? mr[1].trim() : '',
+        channel: 'tell',
+        speaker: nw.clean,
+        originalWorld: nw.world,
+        message: mr[3].trim(),
+        raw
+      };
+    }
+    // "((이름))" = 연합 채팅 (단일 괄호보다 먼저 검사)
+    const md = raw.match(doubleParen);
+    if(md && md[2] && cleanSpeakerName(md[2]).length){
+      const nw = extractNameAndWorld(md[2]);
+      return {
+        time: md[1] ? md[1].trim() : '',
+        channel: 'alliance',
+        speaker: nw.clean,
+        originalWorld: nw.world,
+        message: md[3].trim(),
+        raw
+      };
+    }
+    // "(이름)" = 파티 채팅
+    const msp = raw.match(singleParen);
+    if(msp && msp[2] && cleanSpeakerName(msp[2]).length){
+      const nw = extractNameAndWorld(msp[2]);
+      return {
+        time: msp[1] ? msp[1].trim() : '',
+        channel: 'party',
+        speaker: nw.clean,
+        originalWorld: nw.world,
+        message: msp[3].trim(),
+        raw
+      };
+    }
+    // "<닉네임> 내용" 형식: 콜론 없이 꺾쇠괄호로 이름을 감싸는 경우
+    const ma = raw.match(angleName);
+    if(ma && ma[3] && ma[3].trim().length){
+      const nw = extractNameAndWorld(ma[3]);
+      return {
+        time: ma[1] ? ma[1].trim() : '',
+        channel: normalizeChannel(ma[2]) || 'say',
+        speaker: nw.clean,
+        originalWorld: nw.world,
+        message: ma[4].trim(),
+        raw
+      };
+    }
+    const m = raw.match(withColon);
+    if(m && m[3] && m[3].trim().length){
+      const nw = extractNameAndWorld(m[3]);
+      return {
+        time: m[1] ? m[1].trim() : '',
+        channel: normalizeChannel(m[2]) || 'say',
+        speaker: nw.clean,
+        originalWorld: nw.world,
+        message: m[4].trim(),
+        raw
+      };
+    }
+    // 대괄호 채널 태그는 있지만 "이름:" 구분자가 없는 형식 (예: [자유부대] 내용...)
+    const m2 = raw.match(tagOnly);
+    if(m2 && m2[2] && m2[2].trim().length){
+      return {
+        time: m2[1] ? m2[1].trim() : '',
+        channel: normalizeChannel(m2[2]) || 'other',
+        speaker: '',
+        message: m2[3].trim(),
+        raw
+      };
+    }
+    return { time:'', channel:'other', speaker:'', message: raw, raw };
+  }).map(applyGlobalRename).filter(l => !isSystemNotice(l.message));
+}
+
+function isSystemNotice(message){
+  if(!message) return false;
+  const m = message.trim();
+  if(/재생했습니다\.?$/.test(m)) return true;
+  if(m.includes('게임을 시작한 지') && m.includes('지났습니다')) return true;
+  if(m.includes('지나친 게임 이용은 일상생활에 영향을 줄 우려가 있습니다')) return true;
+  return false;
+}
+
+function escapeRegExp(s){
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function hasKoreanBatchim(ch){
+  const code = (ch || '').charCodeAt(0);
+  if(code < 0xAC00 || code > 0xD7A3) return false;
+  return (code - 0xAC00) % 28 !== 0;
+}
+function replaceNameFixParticle(text, oldStr, newName){
+  if(!oldStr || !text.includes(oldStr)) return text;
+  const hasBatchim = hasKoreanBatchim(newName[newName.length - 1]);
+  const noBatchimToBatchim = {'는':'은', '가':'이', '를':'을', '와':'과'};
+  const batchimToNoBatchim = {'은':'는', '이':'가', '을':'를', '과':'와'};
+  const re = new RegExp(escapeRegExp(oldStr) + '(.)?', 'g');
+  return text.replace(re, (match, next) => {
+    let particle = next || '';
+    if(particle){
+      if(hasBatchim && noBatchimToBatchim[particle]) particle = noBatchimToBatchim[particle];
+      else if(!hasBatchim && batchimToNoBatchim[particle]) particle = batchimToNoBatchim[particle];
+    }
+    return newName + particle;
+  });
+}
+
+function applyGlobalRename(line){
+  if(line.speaker){
+    line.originalSpeaker = line.speaker;
+    const mapped = resolveGlobalName(line.speaker);
+    if(mapped !== line.speaker){
+      if(line.raw.includes(line.speaker)) line.raw = line.raw.replace(line.speaker, mapped);
+      line.speaker = mapped;
+    }
+  }
+  // 감정표현 등에서 대사 안에 "이름" 또는 "이름서버명"이 그대로 남아있는 경우도 전역 매핑 적용
+  Object.keys(globalRenames).forEach(oldKey => {
+    const finalName = resolveGlobalName(oldKey);
+    if(finalName === oldKey) return;
+    const candidates = [oldKey, ...WORLD_SUFFIXES.map(w => oldKey + w)]
+      .sort((a, b) => b.length - a.length); // 서버명 붙은 긴 후보부터 검사
+    for(const cand of candidates){
+      if(line.message.includes(cand)){
+        line.message = replaceNameFixParticle(line.message, cand, finalName);
+        if(line.raw.includes(cand)) line.raw = replaceNameFixParticle(line.raw, cand, finalName);
+        break;
+      }
+    }
+  });
+  return line;
+}
+
+function openModal(){
+  document.getElementById('nameInput').value = '';
+  document.getElementById('textInput').value = '';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('descInput').value = '';
+  document.getElementById('placeInput').value = '';
+  document.getElementById('dateInput').value = new Date().toISOString().slice(0,10);
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { document.getElementById('textInput').value = reader.result; };
+  reader.readAsText(f);
+});
+
+function dateInputToISO(value){
+  if(!value) return null;
+  const trimmed = value.trim();
+  let match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(!match) match = trimmed.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if(!match) return null;
+  const y = Number(match[1]), m = Number(match[2]), d = Number(match[3]);
+  if(m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(y, m - 1, d, 12);
+  if(dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+  return dt.toISOString();
+}
+
+function derivePeopleFromLines(lines){
+  const people = [];
+  const seen = new Set();
+  lines.forEach(l => {
+    if(l.speaker && l.speaker !== '나' && !seen.has(l.speaker)){
+      seen.add(l.speaker);
+      people.push(l.speaker);
+    }
+  });
+  return people;
+}
+
+function saveArchive(){
+  const name = document.getElementById('nameInput').value.trim() || '이름 없는 기록';
+  const text = document.getElementById('textInput').value;
+  const description = document.getElementById('descInput').value.trim();
+  const place = document.getElementById('placeInput').value.trim();
+  const createdAt = dateInputToISO(document.getElementById('dateInput').value) || new Date().toISOString();
+  if(!text.trim()){ alert('붙여넣거나 업로드한 로그 내용이 없어요.'); return; }
+  const lines = parseLog(text);
+  const people = derivePeopleFromLines(lines);
+  const entry = { id: 'a'+Date.now(), name, createdAt, description, place, people, lines };
+  archives.unshift(entry);
+  persist();
+  currentId = entry.id;
+  closeModal();
+  renderSidebar();
+  renderMain();
+}
+
+let pendingDelete = null; // { type: 'archive'|'line', ref }
+function reparseArchive(id){
+  pendingDelete = { type:'reparse', ref: id };
+  document.getElementById('confirmTitle').textContent = '태그 초기화';
+  document.getElementById('confirmMsg').textContent = '정말 초기화하시겠습니까?';
+  const yesBtn = document.getElementById('confirmYesBtn');
+  yesBtn.textContent = '초기화';
+  yesBtn.style.background = '';
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function performReparse(id){
+  const a = archives.find(x => x.id === id);
+  if(!a) return;
+  const text = a.lines.map(l => l.raw).join('\n');
+  const oldColors = a.speakerColors || {};
+  a.lines = parseLog(text);
+  // 이름이 그대로인 발화자는 기존에 지정한 색상을 유지
+  a.lines.forEach(l => { if(oldColors[l.speaker]) (a.speakerColors = a.speakerColors || {})[l.speaker] = oldColors[l.speaker]; });
+  a.people = derivePeopleFromLines(a.lines);
+  persist();
+  renderLogView();
+  renderPeopleTags();
+  renderSidebar();
+}
+
+function deleteArchive(id){
+  pendingDelete = { type:'archive', ref:id };
+  const a = archives.find(x => x.id === id);
+  document.getElementById('confirmTitle').textContent = '기록 삭제';
+  document.getElementById('confirmMsg').textContent = `"${a ? a.name : '이 기록'}"을(를) 정말 삭제할까요? 되돌릴 수 없어요.`;
+  const yesBtn = document.getElementById('confirmYesBtn');
+  yesBtn.textContent = '삭제하기';
+  yesBtn.style.background = '';
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function deleteLine(idx){
+  pendingDelete = { type:'line', ref: parseInt(idx, 10) };
+  document.getElementById('confirmTitle').textContent = '줄 삭제';
+  document.getElementById('confirmMsg').textContent = '이 대화 한 줄을 삭제할까요? 되돌릴 수 없어요.';
+  const yesBtn = document.getElementById('confirmYesBtn');
+  yesBtn.textContent = '삭제하기';
+  yesBtn.style.background = '';
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm(){
+  pendingDelete = null;
+  document.getElementById('confirmOverlay').classList.remove('show');
+}
+function confirmDeleteYes(){
+  if(!pendingDelete) return;
+  if(pendingDelete.type === 'archive'){
+    const id = pendingDelete.ref;
+    archives = archives.filter(a => a.id !== id);
+    persist();
+    if(currentId === id) currentId = archives[0] ? archives[0].id : null;
+    closeConfirm();
+    renderSidebar();
+    renderMain();
+  } else if(pendingDelete.type === 'line'){
+    const a = archives.find(x => x.id === currentId);
+    if(a){
+      a.lines.splice(pendingDelete.ref, 1);
+      a.people = derivePeopleFromLines(a.lines);
+      persist();
+    }
+    closeConfirm();
+    renderSidebar();
+    renderLogView();
+    renderPeopleTags();
+  } else if(pendingDelete.type === 'reparse'){
+    performReparse(pendingDelete.ref);
+    closeConfirm();
+  } else if(pendingDelete.type === 'bulk'){
+    const a = archives.find(x => x.id === currentId);
+    if(a){
+      const indices = [...pendingDelete.ref].sort((x,y) => y - x);
+      indices.forEach(i => a.lines.splice(i, 1));
+      a.people = derivePeopleFromLines(a.lines);
+      persist();
+    }
+    selectedLineIndices.clear();
+    closeConfirm();
+    renderSidebar();
+    renderLogView();
+    renderPeopleTags();
+  }
+}
+
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
+}
+
+let personSearchTerm = '';
+function onPersonSearch(v){
+  personSearchTerm = v.trim().toLowerCase();
+  renderSidebar();
+}
+
+let selectMode = false;
+let selectedLineIndices = new Set();
+function toggleSelectMode(){
+  selectMode = !selectMode;
+  selectedLineIndices.clear();
+  renderLogView();
+}
+function toggleLineSelect(idx){
+  if(selectedLineIndices.has(idx)) selectedLineIndices.delete(idx);
+  else selectedLineIndices.add(idx);
+  renderLogView();
+}
+function openBulkTagPicker(){
+  if(!selectedLineIndices.size) return;
+  const list = document.getElementById('tagPickerList');
+  list.innerHTML = Object.entries(CHANNELS).map(([key,c]) =>
+    `<span class="chip" style="background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}" onclick="pickBulkTag('${key}')">${c.label}</span>`
+  ).join('');
+  document.getElementById('tagPickerOverlay').classList.add('show');
+}
+function pickBulkTag(key){
+  const a = archives.find(x => x.id === currentId);
+  if(a){
+    selectedLineIndices.forEach(idx => { if(a.lines[idx]) a.lines[idx].channel = key; });
+    persist();
+  }
+  document.getElementById('tagPickerOverlay').classList.remove('show');
+  renderLogView();
+}
+function bulkDeleteLines(){
+  if(!selectedLineIndices.size) return;
+  pendingDelete = { type:'bulk', ref: Array.from(selectedLineIndices) };
+  document.getElementById('confirmTitle').textContent = '선택한 줄 삭제';
+  document.getElementById('confirmMsg').textContent = `선택한 ${selectedLineIndices.size}개 줄을 삭제할까요? 되돌릴 수 없어요.`;
+  const yesBtn = document.getElementById('confirmYesBtn');
+  yesBtn.textContent = '삭제하기';
+  yesBtn.style.background = '';
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function renderSidebar(){
+  const ul = document.getElementById('archiveList');
+  if(!archives.length){
+    ul.innerHTML = '<li class="empty">아직 보관된 기록이 없어요.<br>왼쪽 위 버튼으로 첫 로그를 추가해 보세요.</li>';
+    return;
+  }
+  let sorted = [...archives].sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
+  if(personSearchTerm){
+    sorted = sorted.filter(a => (a.people || []).some(p => p.toLowerCase().includes(personSearchTerm)));
+  }
+  if(!sorted.length){
+    ul.innerHTML = '<li class="empty">이 인물이 등장하는 기록이 없어요.</li>';
+    return;
+  }
+  ul.innerHTML = sorted.map(a => `
+    <li class="${a.id===currentId?'active':''}" onclick="selectArchive('${a.id}')">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+        <span class="name" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(a.name)}</span>
+        <span class="meta" style="flex-shrink:0; margin-top:0;">${fmtDate(a.createdAt)} · ${a.lines.length}줄</span>
+      </div>
+      ${a.place ? `<span class="meta" style="display:block; margin-top:2px; opacity:.85;">장소 : ${escapeHtml(a.place)}</span>` : ''}
+      ${(a.people && a.people.length) ? `<span class="meta" style="display:block; margin-top:2px; opacity:.8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">인물 : ${escapeHtml(a.people.join(', '))}</span>` : ''}
+    </li>`).join('');
+}
+
+function selectArchive(id){
+  currentId = id;
+  searchTerm = '';
+  activeFilters = new Set(Object.keys(CHANNELS));
+  document.getElementById('sidebar').classList.remove('open');
+  renderSidebar();
+  renderMain();
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderMain(){
+  const main = document.getElementById('main');
+  const a = archives.find(x => x.id === currentId);
+  if(!a){
+    main.innerHTML = `<div id="emptyState"><h2>기록을 선택하거나 새로 추가하세요</h2>
+      <p>파이널판타지14의 채팅 로그를 붙여넣거나 파일로 업로드하면, 채널별 색으로 정리된 예쁜 아카이브 페이지로 저장돼요.</p></div>`;
+    return;
+  }
+
+  main.innerHTML = `
+    <div class="page-wrap">
+      <div class="page-head">
+        <div>
+          <h2 id="titleDisplay" onclick="toggleTitleEdit()" style="cursor:pointer;" title="클릭해서 이름 수정">${escapeHtml(a.name)}</h2>
+          <input type="text" id="titleFieldInline" value="${escapeHtml(a.name)}" style="display:none; width:100%; border:none; background:transparent; padding:0; margin:0; outline:none; font-family:inherit; font-weight:700; font-size:1.7rem; letter-spacing:-.01em; color:#111; line-height:inherit;" onblur="updateArchiveName(this.value)" onkeydown="if(event.key==='Enter') this.blur();">
+        </div>
+        <div class="actions">
+          <button class="iconbtn" id="searchToggleBtn" title="검색" onclick="toggleSearchBox()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+          <button class="iconbtn" title="태그 초기화" onclick="reparseArchive('${a.id}')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+          <button class="iconbtn" title="로그 저장" onclick="exportArchive('${a.id}')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+          <button class="iconbtn danger" title="삭제" onclick="deleteArchive('${a.id}')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button>
+        </div>
+      </div>
+      <div class="controls" id="searchBox" style="${searchTerm ? '' : 'display:none;'}">
+        <input type="text" id="search" placeholder="이름이나 대화 내용 검색..." value="${escapeHtml(searchTerm)}" oninput="onSearch(this.value)">
+      </div>
+      <div class="controls" style="margin-top:10px;">
+        <label for="dateFieldInline" style="color:var(--muted); font-size:.85rem; flex-shrink:0;">날짜</label>
+        <input type="text" class="field" id="dateFieldInline" style="width:9.5em; text-align:center;" placeholder="YYYY-MM-DD" inputmode="numeric" value="${isoToDateInput(a.createdAt)}" onchange="updateArchiveDate(this.value)" onkeydown="if(event.key==='Enter') this.blur();">
+        <label for="placeFieldInline" style="color:var(--muted); font-size:.85rem; flex-shrink:0; margin-left:10px;">장소</label>
+        <input type="text" class="field" id="placeFieldInline" style="flex:1; min-width:140px;" value="${escapeHtml(a.place || '')}" onchange="updateArchivePlace(this.value)" onkeydown="if(event.key==='Enter') this.blur();">
+      </div>
+      <hr class="sectionDivider">
+
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label style="color:var(--muted); font-size:.85rem; flex-shrink:0;">인물</label>
+        <div class="tagsInput" id="peopleEditBox" style="flex:1;">
+          <span id="peopleTags">${renderPeopleChipsHTML(a.people)}</span>
+        </div>
+      </div>
+      <hr class="sectionDivider">
+
+      <div class="controls" style="margin-top:10px; align-items:flex-start;">
+        <label for="descFieldInline" style="color:var(--muted); font-size:.85rem; flex-shrink:0; padding-top:8px;">비고</label>
+        <textarea class="field" id="descFieldInline" style="flex:1; overflow:hidden;" placeholder="이 기록에 대한 간단한 설명" oninput="autoResizeTextarea(this)" onblur="updateArchiveDesc(this.value)">${escapeHtml(a.description || '')}</textarea>
+      </div>
+      <hr class="sectionDivider">
+
+      <div style="display:flex; align-items:flex-start; gap:10px; margin-bottom:10px;">
+        <div class="chips" id="chipsBox" style="flex:1;"></div>
+        <button class="iconbtn" id="allTagsToggleBtn" onclick="toggleAllFilters()" style="flex-shrink:0; white-space:nowrap; padding:4px 9px; font-size:.72rem;"></button>
+      </div>
+      <div class="parchment" id="parchmentBox"></div>
+    </div>
+  `;
+  renderLogView();
+  const descEl = document.getElementById('descFieldInline');
+  if(descEl) autoResizeTextarea(descEl);
+}
+
+function autoResizeTextarea(el){
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+// 검색어 입력이나 필터 토글에서는 이 함수만 호출한다.
+// #search input 자체를 다시 그리면 한글 등 조합형 입력(IME)이 타이핑 중간에 끊기므로,
+// 검색창은 renderMain()에서 한 번만 만들고 여기서는 결과 영역만 갱신한다.
+function renderLogView(){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+
+  refreshSettingsLabels();
+
+  const chipsBox = document.getElementById('chipsBox');
+  if(chipsBox){
+    chipsBox.innerHTML = Object.entries(CHANNELS).map(([key,c]) => `
+      <span class="chip ${activeFilters.has(key)?'on':''}" style="${activeFilters.has(key)?`background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}`:''}" onclick="toggleFilter('${key}')">${c.label}</span>
+    `).join('');
+  }
+  const allTagsBtn = document.getElementById('allTagsToggleBtn');
+  if(allTagsBtn){
+    allTagsBtn.textContent = (activeFilters.size === Object.keys(CHANNELS).length) ? '태그 전부 끄기' : '태그 전부 켜기';
+  }
+
+  const filtered = a.lines.filter(l => activeFilters.has(l.channel) &&
+    (!searchTerm || l.message.toLowerCase().includes(searchTerm) || l.speaker.toLowerCase().includes(searchTerm)));
+
+  const toolbarHtml = `<div class="logToolbarInner">
+    ${selectMode ? `<button type="button" class="toolbarBtn" onclick="openBulkTagPicker()">태그 변경</button>
+    <button type="button" class="toolbarBtn danger" onclick="bulkDeleteLines()">선택 삭제</button>` : ''}
+    <button type="button" class="toolbarIconBtn ${selectMode ? 'active' : ''}" title="여러 줄 선택" onclick="toggleSelectMode()"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></button>
+  </div>`;
+
+  const logHtml = filtered.length ? filtered.map(l => {
+    const c = CHANNELS[l.channel];
+    const chColor = getChannelColor(l.channel);
+    const isEmote = l.channel === 'emote';
+    const nameColor = getPersonColor(l.speaker) || 'var(--ptext)';
+    const idx = a.lines.indexOf(l);
+    const isSelected = selectMode && selectedLineIndices.has(idx);
+    if(selectMode){
+      return `<div class="logline ${isEmote?'emote':''} ${isSelected?'lineSelected':''}" onclick="toggleLineSelect(${idx})">
+        <span class="tag" style="background:${chColor}; color:${getContrastTextColor(chColor)}">${c.label}</span>
+        ${l.speaker ? `<span class="speaker" style="color:${nameColor}">${getPersonPhoto(l.speaker) ? `<img class="speakerPhoto" src="${getPersonPhoto(l.speaker)}">` : ''}<span class="speakerNameText">${escapeHtml(l.speaker)}</span></span>` : ''}
+        <span class="msg"><span class="msgText">${escapeHtml(l.message)}</span></span>
+        <span class="time">${escapeHtml(l.time)}</span>
+      </div>`;
+    }
+    return `<div class="logline ${isEmote?'emote':''}">
+      <span class="tag" style="background:${chColor}; color:${getContrastTextColor(chColor)}" data-idx="${idx}" onclick="openTagPicker(this.dataset.idx)">${c.label}</span>
+      ${l.speaker ? `<span class="speaker" style="color:${nameColor}" data-speaker="${escapeHtml(l.speaker)}" onclick="openRename(this.dataset.speaker)">${getPersonPhoto(l.speaker) ? `<img class="speakerPhoto" src="${getPersonPhoto(l.speaker)}">` : ''}<span class="speakerNameText">${escapeHtml(l.speaker)}</span></span>` : ''}
+      <span class="msg"><span class="msgText">${escapeHtml(l.message)}</span><span class="lineActions"><button type="button" title="대사 수정" onclick="openEditLine(${idx})">✎</button><button type="button" title="줄 삭제" onclick="deleteLine(${idx})">✕</button></span></span>
+      <span class="time">${escapeHtml(l.time)}</span>
+    </div>`;
+  }).join('') : '<div class="noresult">조건에 맞는 대화가 없어요.</div>';
+
+  const parchmentBox = document.getElementById('parchmentBox');
+  if(parchmentBox){
+    parchmentBox.classList.toggle('hide-tags', !showTags);
+    parchmentBox.classList.toggle('hide-time', !showTime);
+    parchmentBox.classList.toggle('select-mode', selectMode);
+    parchmentBox.style.setProperty('--tag-order', tagPosition === 'left' ? '1' : '4');
+    parchmentBox.style.setProperty('--time-order', timePosition === 'left' ? '0' : '5');
+    parchmentBox.innerHTML = toolbarHtml + logHtml;
+  }
+}
+
+let pendingRenameSpeaker = null;
+let pendingRenamePhoto = '';
+function findOriginalNameGlobal(currentName){
+  for(const key of Object.keys(globalRenames)){
+    if(key !== currentName && resolveGlobalName(key) === currentName) return key;
+  }
+  return currentName;
+}
+
+function openRename(name){
+  pendingRenameSpeaker = name;
+  const a = archives.find(x => x.id === currentId);
+  const input = document.getElementById('renameInput');
+  const colorInput = document.getElementById('renameColor');
+  const notesInput = document.getElementById('renamePersonInfo');
+  const ageInput = document.getElementById('renameAge');
+  const jobInput = document.getElementById('renameJob');
+  const hint = document.getElementById('renameOriginal');
+  const line = a && a.lines.find(l => l.speaker === name);
+  const original = line ? (line.originalSpeaker || name) : findOriginalNameGlobal(name);
+  const originalWorld = line ? (line.originalWorld || '') : '';
+  const originalFull = originalWorld ? `${original}@${originalWorld}` : original;
+  if(original !== name){
+    input.value = name;
+    input.placeholder = '';
+  } else {
+    input.value = '';
+    input.placeholder = name;
+  }
+  if(hint) hint.value = originalFull;
+  let currentColor = getPersonColor(name);
+  if(!currentColor){
+    currentColor = line ? getChannelColor(line.channel) : '#333333';
+  }
+  colorInput.value = currentColor;
+  if(notesInput) notesInput.value = getPersonNotes(name);
+  if(ageInput) ageInput.value = getPersonAge(name);
+  if(jobInput) jobInput.value = getPersonJob(name);
+  pendingRenamePhoto = getPersonPhoto(name);
+  updateRenamePhotoPreview();
+  document.getElementById('renameOverlay').classList.add('show');
+  setTimeout(() => { input.focus(); }, 30);
+}
+function updateRenamePhotoPreview(){
+  const preview = document.getElementById('renamePhotoPreview');
+  if(!preview) return;
+  preview.style.backgroundImage = pendingRenamePhoto ? `url(${pendingRenamePhoto})` : 'none';
+}
+function handleRenamePhotoSelect(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const size = 96;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      pendingRenamePhoto = canvas.toDataURL('image/jpeg', 0.85);
+      updateRenamePhotoPreview();
+      input.value = '';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function removeRenamePhoto(){
+  pendingRenamePhoto = '';
+  updateRenamePhotoPreview();
+}
+function closeRename(){
+  pendingRenameSpeaker = null;
+  document.getElementById('renameOverlay').classList.remove('show');
+}
+function confirmRename(){
+  const typed = document.getElementById('renameInput').value.trim();
+  const newName = typed || pendingRenameSpeaker;
+  const newColor = document.getElementById('renameColor').value;
+  const typedOriginal = document.getElementById('renameOriginal').value.trim();
+  const newAge = document.getElementById('renameAge').value.trim();
+  const newJob = document.getElementById('renameJob').value.trim();
+  const newNotes = document.getElementById('renamePersonInfo').value.trim();
+  if(!newName || !pendingRenameSpeaker){ closeRename(); return; }
+  applyRename(pendingRenameSpeaker, newName, newColor, newAge, newJob, newNotes, typedOriginal, pendingRenamePhoto);
+  closeRename();
+}
+function applyRename(oldName, newName, newColor, newAge, newJob, newNotes, typedOriginal, photo){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  let worldGuess = '';
+  a.lines.forEach(l => { if(l.originalSpeaker === oldName && l.originalWorld) worldGuess = l.originalWorld; });
+  const fullOld = oldName + worldGuess;
+  a.lines.forEach(l => {
+    if(l.speaker === oldName){
+      if(oldName !== newName) l.raw = l.raw.replace(oldName, newName);
+      l.speaker = newName;
+    }
+    // 감정표현 등에서 대사 맨 앞에 "닉네임서버명"이 그대로 붙어 나오는 경우도 함께 변경 (조사도 자동 교정)
+    if(oldName !== newName && fullOld && l.message.includes(fullOld)){
+      l.message = replaceNameFixParticle(l.message, fullOld, newName);
+      if(l.raw.includes(fullOld)) l.raw = replaceNameFixParticle(l.raw, fullOld, newName);
+    }
+  });
+  if(oldName !== newName){
+    globalRenames[oldName] = newName;
+    saveGlobalRenames();
+    delete globalProfiles[oldName];
+  }
+  a.people = derivePeopleFromLines(a.lines);
+  // 사용자가 원본 닉네임을 직접 수정했다면 그 값도 전역 매핑에 등록
+  const bareOriginal = (typedOriginal || '').split('@')[0].trim();
+  if(bareOriginal && bareOriginal !== newName && bareOriginal !== oldName){
+    globalRenames[bareOriginal] = newName;
+    saveGlobalRenames();
+  }
+  globalProfiles[newName] = { color: newColor, age: newAge || '', job: newJob || '', notes: newNotes || '', photo: photo || '' };
+  saveGlobalProfiles();
+  persist();
+  renderLogView();
+  renderPeopleTags();
+  renderSidebar();
+}
+
+let pendingTagLineIndex = null;
+function openTagPicker(idx){
+  pendingTagLineIndex = parseInt(idx, 10);
+  const list = document.getElementById('tagPickerList');
+  list.innerHTML = Object.entries(CHANNELS).map(([key,c]) =>
+    `<span class="chip" style="background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}" onclick="pickTag('${key}')">${c.label}</span>`
+  ).join('');
+  document.getElementById('tagPickerOverlay').classList.add('show');
+}
+function closeTagPicker(){
+  pendingTagLineIndex = null;
+  document.getElementById('tagPickerOverlay').classList.remove('show');
+}
+function pickTag(key){
+  const a = archives.find(x => x.id === currentId);
+  if(!a || pendingTagLineIndex === null) return;
+  const line = a.lines[pendingTagLineIndex];
+  if(line) line.channel = key;
+  persist();
+  closeTagPicker();
+  renderLogView();
+}
+
+let pendingEditLineIndex = null;
+function openEditLine(idx){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  const line = a.lines[idx];
+  if(!line) return;
+  pendingEditLineIndex = idx;
+  const input = document.getElementById('editLineInput');
+  input.value = line.message;
+  document.getElementById('editLineOverlay').classList.add('show');
+  setTimeout(() => { input.focus(); }, 30);
+}
+function closeEditLine(){
+  pendingEditLineIndex = null;
+  document.getElementById('editLineOverlay').classList.remove('show');
+}
+function confirmEditLine(){
+  const a = archives.find(x => x.id === currentId);
+  if(!a || pendingEditLineIndex === null) return;
+  const line = a.lines[pendingEditLineIndex];
+  if(!line){ closeEditLine(); return; }
+  const newMsg = document.getElementById('editLineInput').value.trim();
+  if(newMsg && newMsg !== line.message){
+    if(line.raw.includes(line.message)) line.raw = line.raw.replace(line.message, newMsg);
+    line.message = newMsg;
+    persist();
+  }
+  closeEditLine();
+  renderLogView();
+}
+
+function toggleFilter(key){
+  if(activeFilters.has(key)) activeFilters.delete(key); else activeFilters.add(key);
+  renderLogView();
+}
+function toggleAllFilters(){
+  const allOn = activeFilters.size === Object.keys(CHANNELS).length;
+  activeFilters = allOn ? new Set() : new Set(Object.keys(CHANNELS));
+  renderLogView();
+}
+function onSearch(v){ searchTerm = v.toLowerCase(); renderLogView(); }
+function toggleSearchBox(){
+  const box = document.getElementById('searchBox');
+  if(!box) return;
+  const show = box.style.display === 'none';
+  box.style.display = show ? '' : 'none';
+  if(show){
+    const input = document.getElementById('search');
+    if(input) setTimeout(() => input.focus(), 30);
+  } else if(searchTerm){
+    searchTerm = '';
+    const input = document.getElementById('search');
+    if(input) input.value = '';
+    renderLogView();
+  }
+}
+
+let calendarViewYear = null, calendarViewMonth = null;
+function toggleDateBox(){
+  const box = document.getElementById('dateBox');
+  if(!box) return;
+  const show = box.style.display === 'none';
+  box.style.display = show ? '' : 'none';
+  if(show){
+    const a = archives.find(x => x.id === currentId);
+    const d = a ? new Date(a.createdAt) : new Date();
+    calendarViewYear = d.getFullYear();
+    calendarViewMonth = d.getMonth();
+    renderCalendar();
+    const input = document.getElementById('dateFieldInline');
+    if(input) setTimeout(() => input.focus(), 30);
+  }
+}
+function changeCalendarMonth(delta){
+  calendarViewMonth += delta;
+  if(calendarViewMonth < 0){ calendarViewMonth = 11; calendarViewYear--; }
+  if(calendarViewMonth > 11){ calendarViewMonth = 0; calendarViewYear++; }
+  renderCalendar();
+}
+function renderCalendar(){
+  const box = document.getElementById('calendarBox');
+  if(!box || calendarViewYear === null) return;
+  const a = archives.find(x => x.id === currentId);
+  const selected = a ? isoToDateInput(a.createdAt) : '';
+  const first = new Date(calendarViewYear, calendarViewMonth, 1);
+  const startOffset = first.getDay();
+  const daysInMonth = new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate();
+  const weekdays = ['일','월','화','수','목','금','토'];
+  let cells = '';
+  for(let i = 0; i < startOffset; i++) cells += '<span></span>';
+  for(let d = 1; d <= daysInMonth; d++){
+    const dateStr = `${calendarViewYear}-${String(calendarViewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isSelected = dateStr === selected;
+    cells += `<span class="calDay${isSelected?' selected':''}" onclick="pickCalendarDate('${dateStr}')">${d}</span>`;
+  }
+  box.innerHTML = `
+    <div class="calHead">
+      <button type="button" class="iconbtn" style="padding:3px 8px;" onclick="changeCalendarMonth(-1)">‹</button>
+      <span>${calendarViewYear}년 ${calendarViewMonth+1}월</span>
+      <button type="button" class="iconbtn" style="padding:3px 8px;" onclick="changeCalendarMonth(1)">›</button>
+    </div>
+    <div class="calGrid">${weekdays.map(w=>`<span class="calWeekday">${w}</span>`).join('')}${cells}</div>
+  `;
+}
+function pickCalendarDate(dateStr){
+  updateArchiveDate(dateStr);
+  const d = new Date(dateStr);
+  calendarViewYear = d.getFullYear();
+  calendarViewMonth = d.getMonth();
+  renderCalendar();
+}
+
+async function tryAssetUpload(text, mimeType){
+  try{
+    const assets = await claude.use('assets');
+    if(!assets) return null;
+    const blob = new Blob([text], { type: mimeType });
+    const uploaded = await assets.upload(blob);
+    return uploaded && uploaded.url ? uploaded.url : null;
+  }catch(e){ return null; }
+}
+
+async function exportAllData(){
+  const payload = {
+    kind: 'ffxiv-chat-archive-backup',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    archives,
+    globalRenames,
+    globalProfiles,
+    channelColors
+  };
+  const text = JSON.stringify(payload, null, 2);
+  const filename = `연대기_백업_${isoToDateInput(new Date().toISOString())}.json`;
+  try{
+    const downloads = await claude.use('downloads');
+    if(downloads){
+      await downloads.save({ filename, data: text });
+      return;
+    }
+  }catch(e){ /* fall through */ }
+  const url = await tryAssetUpload(text, 'application/json');
+  showTextExportFallback(filename, text, url);
+}
+
+function showTextExportFallback(filename, text, downloadUrl){
+  const overlay = document.getElementById('textExportOverlay');
+  const title = document.getElementById('textExportTitle');
+  const area = document.getElementById('textExportArea');
+  const linkBox = document.getElementById('textExportLinkBox');
+  const link = document.getElementById('textExportLink');
+  const copyHint = document.getElementById('textExportCopyHint');
+  const heading = document.getElementById('textExportHeading');
+  if(!overlay || !area) return;
+  if(title) title.textContent = filename;
+  area.value = text;
+  if(downloadUrl){
+    heading.textContent = '파일 준비됐어요';
+    linkBox.style.display = '';
+    link.href = downloadUrl;
+    copyHint.style.display = 'none';
+  } else {
+    heading.textContent = '파일로 저장할 수 없어요';
+    linkBox.style.display = 'none';
+    copyHint.style.display = '';
+  }
+  overlay.classList.add('show');
+  if(!downloadUrl) setTimeout(() => { area.focus(); area.select(); }, 30);
+}
+function closeTextExport(){
+  document.getElementById('textExportOverlay').classList.remove('show');
+}
+async function copyTextExport(){
+  const area = document.getElementById('textExportArea');
+  const btn = document.getElementById('textExportCopyBtn');
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(area.value);
+    } else {
+      area.focus(); area.select();
+      document.execCommand('copy');
+    }
+    if(btn){ const orig = btn.textContent; btn.textContent = '복사됨!'; setTimeout(() => { btn.textContent = orig; }, 1500); }
+  }catch(e){
+    area.focus(); area.select();
+    alert('자동 복사에 실패했어요. 텍스트가 이미 선택되어 있으니 Ctrl+C(또는 Cmd+C)로 복사해주세요.');
+  }
+}
+
+function importAllData(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try{ data = JSON.parse(reader.result); }
+    catch(e){ alert('이 파일을 읽을 수 없어요. 올바른 백업 파일인지 확인해주세요.'); input.value=''; return; }
+
+    const importedArchives = Array.isArray(data.archives) ? data.archives : [];
+    const existingIds = new Set(archives.map(a => a.id));
+    let addedCount = 0;
+    importedArchives.forEach(a => {
+      if(a && a.id && !existingIds.has(a.id)){
+        archives.push(a);
+        existingIds.add(a.id);
+        addedCount++;
+      }
+    });
+
+    if(data.globalRenames) Object.assign(globalRenames, data.globalRenames);
+    if(data.globalProfiles) Object.assign(globalProfiles, data.globalProfiles);
+    if(data.channelColors){
+      Object.assign(channelColors, data.channelColors);
+      try{ localStorage.setItem('ffxiv_chat_channel_colors', JSON.stringify(channelColors)); }catch(e){}
+    }
+    saveGlobalRenames();
+    saveGlobalProfiles();
+
+    persist();
+    renderSidebar();
+    if(!currentId && archives.length) selectArchive(archives[0].id);
+    input.value = '';
+    alert(`가져오기 완료: 새 기록 ${addedCount}개를 추가했어요. (이미 있는 기록은 건너뛰었어요)`);
+  };
+  reader.readAsText(file);
+}
+
+async function exportArchive(id){
+  const a = archives.find(x => x.id === id);
+  if(!a) return;
+  const text = a.lines.map(l => l.raw).join('\n');
+  const filename = a.name.replace(/[\\/:*?"<>|]/g,'_') + '.txt';
+  try{
+    const downloads = await claude.use('downloads');
+    if(downloads){
+      await downloads.save({ filename, data: text });
+      return;
+    }
+  }catch(e){ /* fall through */ }
+  const url = await tryAssetUpload(text, 'text/plain');
+  showTextExportFallback(filename, text, url);
+}
+
+document.addEventListener('click', function(e){
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('drawerToggle');
+  if(!sidebar || !sidebar.classList.contains('open')) return;
+  if(sidebar.contains(e.target) || (toggleBtn && toggleBtn.contains(e.target))) return;
+  sidebar.classList.remove('open');
+});
+
+(function(){
+  let startX = null, startY = null;
+  document.addEventListener('touchstart', function(e){
+    const drawerToggle = document.getElementById('drawerToggle');
+    if(!drawerToggle || getComputedStyle(drawerToggle).display === 'none') return; // 모바일 폭이 아니면 무시
+    const sidebar = document.getElementById('sidebar');
+    if(sidebar && sidebar.classList.contains('open')) return;
+    const t = e.touches[0];
+    if(t.clientX > 40) { startX = null; return; } // 왼쪽 가장자리에서 시작한 터치만 인식
+    startX = t.clientX;
+    startY = t.clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', function(e){
+    if(startX === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    const sx = startX;
+    startX = null; startY = null;
+    if(sx <= 40 && dx > 60 && Math.abs(dy) < 50){
+      const sidebar = document.getElementById('sidebar');
+      if(sidebar) sidebar.classList.add('open');
+    }
+  }, { passive: true });
+})();
+
+loadTagPref();
+loadGlobalRenames();
+loadGlobalProfiles();
+loadChannelColors();
+loadArchives();
+if(archives.length) currentId = archives[0].id;
+renderSidebar();
+renderMain();
+</script>
+</body>
+</html>
