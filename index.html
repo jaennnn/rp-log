@@ -129,7 +129,7 @@ button{font-family:inherit;}
 .logline .time{order:var(--time-order, 5); color:#a3a3a3; font-size:.74rem; white-space:nowrap; flex:0 0 3.6rem; margin-right:-5px;}
 .logline .tag{order:var(--tag-order, 0); font-size:.7rem; font-weight:700; padding:1px 6px; border-radius:8px; letter-spacing:.01em; flex:0 0 3.4rem; max-width:3.4rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; cursor:pointer;}
 .logline .tag:hover{filter:brightness(1.1);}
-.logline .speaker{order:2; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; overflow:hidden; flex:0 0 5.2rem; text-align:left;}
+.logline .speaker{order:2; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; overflow:hidden; flex:0 0 6.5rem; text-align:left; margin-left:8px; padding:0 4px;}
 .logline .speakerNameText{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-decoration:underline; text-decoration-color:transparent; text-underline-offset:3px; transition:text-decoration-color .12s;}
 .logline .speaker:hover .speakerNameText{text-decoration-color:currentColor;}
 .speakerPhoto{width:16px; height:16px; object-fit:cover; border-radius:2px; flex-shrink:0; display:block;}
@@ -159,6 +159,7 @@ button{font-family:inherit;}
 }
 .parchment.hide-tags .logline .tag{display:none;}
 .parchment.hide-time .logline .time{display:none;}
+.parchment.abbrev-tags .logline .tag{flex:0 0 2.1rem; max-width:2.1rem; padding-left:3px; padding-right:3px;}
 .noresult{color:var(--muted); text-align:center; padding:30px 0;}
 /* ---- modal ---- */
 .overlay{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50; padding:20px;}
@@ -203,6 +204,8 @@ button{font-family:inherit;}
     background:#fff; border:1px solid #dcdcdc; color:#333; border-radius:8px;
     padding:7px 11px; font-family:inherit; font-size:.85rem; cursor:pointer;
   }
+  #sidebarCloseBtn{display:inline-flex !important;}
+  body:has(#sidebar.open) #drawerToggle{display:none;}
   #main{padding:calc(env(safe-area-inset-top,0px) + 64px) 18px 30px;}
   .parchment{padding:16px 14px;}
   .logline{gap:7px; font-size:.9rem;}
@@ -214,7 +217,7 @@ button{font-family:inherit;}
 </head>
 <body>
 
-<button id="drawerToggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰ 기록</button>
+<button id="drawerToggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
 
 <div id="sidebar">
   <div style="display:flex; align-items:center; justify-content:space-between; padding-right:20px;">
@@ -222,6 +225,7 @@ button{font-family:inherit;}
     <div style="display:flex; gap:4px;">
       <button class="iconbtn" title="인물 목록" onclick="openPeopleRoster()" style="padding:6px 9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
       <button class="iconbtn" title="전체 설정" onclick="openSettings()" style="padding:6px 9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15 1.65 1.65 0 0 0 3.09 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.29l.06.06A1.65 1.65 0 0 0 8.92 4.6 1.65 1.65 0 0 0 9.91 3.09V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.63.99 1.03 1.69 1.06H21a2 2 0 0 1 0 4h-.09A1.65 1.65 0 0 0 19.4 15z"/></svg></button>
+      <button id="sidebarCloseBtn" class="iconbtn" title="닫기" onclick="document.getElementById('sidebar').classList.remove('open')" style="display:none; padding:6px 9px;">✕</button>
     </div>
   </div>
   <p class="sub">파이널판타지14 채팅 아카이브</p>
@@ -342,6 +346,10 @@ button{font-family:inherit;}
         <label class="switch"><input type="checkbox" id="settingsTagSwitch" onchange="toggleTags()"><span class="slider"></span></label>
       </div>
       <div class="settingsRow">
+        <span>태그 이름 간략 표시</span>
+        <label class="switch"><input type="checkbox" id="settingsAbbrevSwitch" onchange="toggleAbbrevTags()"><span class="slider"></span></label>
+      </div>
+      <div class="settingsRow">
         <span>시간 표시</span>
         <label class="switch"><input type="checkbox" id="settingsTimeSwitch" onchange="toggleTime()"><span class="slider"></span></label>
       </div>
@@ -361,7 +369,7 @@ button{font-family:inherit;}
       </div>
 
       <div style="color:var(--muted); font-size:.85rem; margin-top:4px;">채널 색상</div>
-      <div id="channelColorList" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto;"></div>
+      <div id="channelColorList" style="display:flex; flex-wrap:wrap; gap:6px; max-height:220px; overflow-y:auto;"></div>
     </div>
   </div>
 </div>
@@ -369,9 +377,43 @@ button{font-family:inherit;}
 <div id="peopleRosterOverlay" class="overlay">
   <div class="modalbox" style="max-width:460px;">
     <button type="button" class="modalCloseX" onclick="closePeopleRoster()">✕</button>
+    <button type="button" class="modalCloseX" onclick="openAddPerson()" title="인물 추가" style="right:44px; font-size:1.3rem; font-weight:600;">+</button>
     <h3>인물 목록</h3>
     <input type="text" class="field" id="rosterSearchInput" placeholder="이름으로 검색..." style="width:100%; margin-bottom:12px;" oninput="renderPeopleRoster()">
     <div id="peopleRosterList" style="display:flex; flex-direction:column; gap:4px; max-height:60vh; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<div id="addPersonOverlay" class="overlay">
+  <div class="modalbox" style="max-width:380px;">
+    <button type="button" class="modalCloseX" onclick="closeAddPerson()">✕</button>
+    <h3>인물 추가</h3>
+    <div style="display:flex; align-items:center; gap:3px;">
+      <label for="addPersonName" style="flex-shrink:0; width:3.6em; margin:0;">이름</label>
+      <input type="text" id="addPersonName" style="flex:1;" placeholder="캐릭터 이름">
+      <input type="color" id="addPersonColor" style="width:36px; height:36px; padding:2px; border:1px solid var(--line); border-radius:4px; background:var(--ink); cursor:pointer; flex-shrink:0;" value="#8a914a">
+    </div>
+    <div style="display:flex; align-items:center; gap:3px; margin-top:10px;">
+      <label for="addPersonOriginal" style="flex-shrink:0; width:3.6em; margin:0;">닉네임</label>
+      <input type="text" id="addPersonOriginal" style="flex:1;" placeholder="닉네임@서버명">
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+      <label style="flex-shrink:0; width:3.6em; margin:0;">사진</label>
+      <div id="addPersonPhotoPreview" class="photoPreview"></div>
+      <button type="button" class="iconbtn" onclick="document.getElementById('addPersonPhotoInput').click()" style="padding:6px 10px; font-size:.78rem;">선택</button>
+      <button type="button" class="iconbtn" onclick="removeAddPersonPhoto()" style="padding:6px 10px; font-size:.78rem;">제거</button>
+      <input type="file" id="addPersonPhotoInput" accept="image/*" style="display:none;" onchange="handleAddPersonPhotoSelect(this)">
+    </div>
+    <label for="addPersonAge" style="margin-top:14px;">나이</label>
+    <input type="text" id="addPersonAge">
+    <label for="addPersonJob" style="margin-top:14px;">직업</label>
+    <input type="text" id="addPersonJob">
+    <label for="addPersonNotes" style="margin-top:14px;">메모</label>
+    <textarea id="addPersonNotes" style="min-height:60px;" placeholder="이 인물에 대한 메모"></textarea>
+    <div class="row">
+      <button class="iconbtn" onclick="closeAddPerson()">취소</button>
+      <button class="primary" onclick="confirmAddPerson()">저장</button>
+    </div>
   </div>
 </div>
 
@@ -425,6 +467,15 @@ const CHANNELS = {
   other:{label:'기타', color:'#8a8a8a'}
 };
 
+const CHANNEL_ABBR = {
+  say:'말', shout:'외', yell:'떠', party:'파', alliance:'연', fc:'자',
+  linkshell:'링', cwlinkshell:'서', tell:'귓', emote:'감정', other:'기타', pvp:'PvP'
+};
+let abbrevTags = false;
+function channelLabel(key){
+  return abbrevTags ? (CHANNEL_ABBR[key] || CHANNELS[key].label) : CHANNELS[key].label;
+}
+
 let archives = [];
 let currentId = null;
 let activeFilters = new Set(Object.keys(CHANNELS));
@@ -466,10 +517,17 @@ function loadTagPref(){
   catch(e){ tagPosition = 'left'; }
   try{ timePosition = localStorage.getItem('ffxiv_chat_time_pos') || 'right'; }
   catch(e){ timePosition = 'right'; }
+  try{ abbrevTags = localStorage.getItem('ffxiv_chat_abbrev_tags') === '1'; }
+  catch(e){ abbrevTags = false; }
 }
 function toggleTags(){
   showTags = !showTags;
   try{ localStorage.setItem('ffxiv_chat_show_tags', showTags ? '1' : '0'); }catch(e){}
+  renderLogView();
+}
+function toggleAbbrevTags(){
+  abbrevTags = !abbrevTags;
+  try{ localStorage.setItem('ffxiv_chat_abbrev_tags', abbrevTags ? '1' : '0'); }catch(e){}
   renderLogView();
 }
 function toggleTime(){
@@ -486,6 +544,106 @@ function setTimePosition(pos){
   timePosition = pos;
   try{ localStorage.setItem('ffxiv_chat_time_pos', pos); }catch(e){}
   renderLogView();
+}
+
+function resizeImageFileToDataUrl(file, callback){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const size = 96;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+let pendingAddPersonPhoto = '';
+function openAddPerson(){
+  document.getElementById('addPersonName').value = '';
+  document.getElementById('addPersonOriginal').value = '';
+  document.getElementById('addPersonColor').value = '#8a914a';
+  document.getElementById('addPersonAge').value = '';
+  document.getElementById('addPersonJob').value = '';
+  document.getElementById('addPersonNotes').value = '';
+  pendingAddPersonPhoto = '';
+  updateAddPersonPhotoPreview();
+  document.getElementById('addPersonOverlay').classList.add('show');
+  setTimeout(() => { document.getElementById('addPersonName').focus(); }, 30);
+}
+function closeAddPerson(){
+  document.getElementById('addPersonOverlay').classList.remove('show');
+}
+function updateAddPersonPhotoPreview(){
+  const preview = document.getElementById('addPersonPhotoPreview');
+  if(preview) preview.style.backgroundImage = pendingAddPersonPhoto ? `url(${pendingAddPersonPhoto})` : 'none';
+}
+function handleAddPersonPhotoSelect(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  resizeImageFileToDataUrl(file, (dataUrl) => {
+    pendingAddPersonPhoto = dataUrl;
+    updateAddPersonPhotoPreview();
+    input.value = '';
+  });
+}
+function removeAddPersonPhoto(){
+  pendingAddPersonPhoto = '';
+  updateAddPersonPhotoPreview();
+}
+function applyNewMappingEverywhere(originalName, displayName){
+  if(!originalName || originalName === displayName) return;
+  const candidates = [originalName, ...WORLD_SUFFIXES.map(w => originalName + w)].sort((a, b) => b.length - a.length);
+  archives.forEach(a => {
+    let changed = false;
+    a.lines.forEach(l => {
+      if(l.speaker === originalName){
+        if(!l.originalSpeaker) l.originalSpeaker = l.speaker;
+        if(l.raw && l.raw.includes(l.speaker)) l.raw = l.raw.replace(l.speaker, displayName);
+        l.speaker = displayName;
+        changed = true;
+      }
+      for(const cand of candidates){
+        if(l.message && l.message.includes(cand)){
+          l.message = replaceNameFixParticle(l.message, cand, displayName);
+          if(l.raw && l.raw.includes(cand)) l.raw = replaceNameFixParticle(l.raw, cand, displayName);
+          changed = true;
+          break;
+        }
+      }
+    });
+    if(changed) a.people = derivePeopleFromLines(a.lines);
+  });
+}
+function confirmAddPerson(){
+  const displayName = document.getElementById('addPersonName').value.trim();
+  const originalName = document.getElementById('addPersonOriginal').value.trim();
+  if(!displayName){ alert('이름을 입력해주세요.'); return; }
+  const color = document.getElementById('addPersonColor').value;
+  const age = document.getElementById('addPersonAge').value.trim();
+  const job = document.getElementById('addPersonJob').value.trim();
+  const notes = document.getElementById('addPersonNotes').value.trim();
+
+  if(originalName && originalName !== displayName){
+    globalRenames[originalName] = displayName;
+    saveGlobalRenames();
+    delete globalProfiles[originalName];
+    applyNewMappingEverywhere(originalName, displayName);
+  }
+  globalProfiles[displayName] = { color, age, job, notes, photo: pendingAddPersonPhoto || '' };
+  saveGlobalProfiles();
+  persist();
+  closeAddPerson();
+  renderSidebar();
+  if(currentId){ renderLogView(); renderPeopleTags(); }
+  if(document.getElementById('peopleRosterOverlay').classList.contains('show')) renderPeopleRoster();
 }
 
 function openPeopleRoster(){
@@ -541,9 +699,9 @@ function populateChannelColorList(){
   const list = document.getElementById('channelColorList');
   if(!list) return;
   list.innerHTML = Object.entries(CHANNELS).map(([key,c]) => `
-    <div class="settingsRow" style="height:auto;">
-      <span>${c.label}</span>
-      <input type="color" value="${getChannelColor(key)}" onchange="setChannelColor('${key}', this.value)" style="width:34px; height:22px; padding:1px; border:1px solid var(--line); border-radius:4px; background:var(--ink); cursor:pointer;">
+    <div style="position:relative; display:inline-flex; width:fit-content;">
+      <span class="chip on" style="background:${getChannelColor(key)}; border-color:${getChannelColor(key)}; color:${getContrastTextColor(getChannelColor(key))}; pointer-events:none;">${c.label}</span>
+      <input type="color" value="${getChannelColor(key)}" onchange="setChannelColor('${key}', this.value)" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; padding:0; cursor:pointer;">
     </div>
   `).join('');
 }
@@ -555,6 +713,8 @@ function refreshSettingsLabels(){
   if(tagSwitch) tagSwitch.checked = showTags;
   const timeSwitch = document.getElementById('settingsTimeSwitch');
   if(timeSwitch) timeSwitch.checked = showTime;
+  const abbrevSwitch = document.getElementById('settingsAbbrevSwitch');
+  if(abbrevSwitch) abbrevSwitch.checked = abbrevTags;
   document.querySelectorAll('#settingsOverlay .posBtn[data-group="tag"]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.pos === tagPosition);
   });
@@ -1097,7 +1257,7 @@ function openBulkTagPicker(){
   if(!selectedLineIndices.size) return;
   const list = document.getElementById('tagPickerList');
   list.innerHTML = Object.entries(CHANNELS).map(([key,c]) =>
-    `<span class="chip" style="background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}" onclick="pickBulkTag('${key}')">${c.label}</span>`
+    `<span class="chip" style="background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}" onclick="pickBulkTag('${key}')">${channelLabel(key)}</span>`
   ).join('');
   document.getElementById('tagPickerOverlay').classList.add('show');
 }
@@ -1236,12 +1396,12 @@ function renderLogView(){
   const chipsBox = document.getElementById('chipsBox');
   if(chipsBox){
     chipsBox.innerHTML = Object.entries(CHANNELS).map(([key,c]) => `
-      <span class="chip ${activeFilters.has(key)?'on':''}" style="${activeFilters.has(key)?`background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}`:''}" onclick="toggleFilter('${key}')">${c.label}</span>
+      <span class="chip ${activeFilters.has(key)?'on':''}" style="${activeFilters.has(key)?`background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}`:''}" onclick="toggleFilter('${key}')">${channelLabel(key)}</span>
     `).join('');
   }
   const allTagsBtn = document.getElementById('allTagsToggleBtn');
   if(allTagsBtn){
-    allTagsBtn.textContent = (activeFilters.size === Object.keys(CHANNELS).length) ? '태그 전부 끄기' : '태그 전부 켜기';
+    allTagsBtn.textContent = (activeFilters.size === Object.keys(CHANNELS).length) ? '전부 끄기' : '전부 켜기';
   }
 
   const filtered = a.lines.filter(l => activeFilters.has(l.channel) &&
@@ -1262,14 +1422,14 @@ function renderLogView(){
     const isSelected = selectMode && selectedLineIndices.has(idx);
     if(selectMode){
       return `<div class="logline ${isEmote?'emote':''} ${isSelected?'lineSelected':''}" onclick="toggleLineSelect(${idx})">
-        <span class="tag" style="background:${chColor}; color:${getContrastTextColor(chColor)}">${c.label}</span>
+        <span class="tag" style="background:${chColor}; color:${getContrastTextColor(chColor)}">${channelLabel(l.channel)}</span>
         ${l.speaker ? `<span class="speaker" style="color:${nameColor}">${getPersonPhoto(l.speaker) ? `<img class="speakerPhoto" src="${getPersonPhoto(l.speaker)}">` : ''}<span class="speakerNameText">${escapeHtml(l.speaker)}</span></span>` : ''}
         <span class="msg"><span class="msgText">${escapeHtml(l.message)}</span></span>
         <span class="time">${escapeHtml(l.time)}</span>
       </div>`;
     }
     return `<div class="logline ${isEmote?'emote':''}">
-      <span class="tag" style="background:${chColor}; color:${getContrastTextColor(chColor)}" data-idx="${idx}" onclick="openTagPicker(this.dataset.idx)">${c.label}</span>
+      <span class="tag" style="background:${chColor}; color:${getContrastTextColor(chColor)}" data-idx="${idx}" onclick="openTagPicker(this.dataset.idx)">${channelLabel(l.channel)}</span>
       ${l.speaker ? `<span class="speaker" style="color:${nameColor}" data-speaker="${escapeHtml(l.speaker)}" onclick="openRename(this.dataset.speaker)">${getPersonPhoto(l.speaker) ? `<img class="speakerPhoto" src="${getPersonPhoto(l.speaker)}">` : ''}<span class="speakerNameText">${escapeHtml(l.speaker)}</span></span>` : ''}
       <span class="msg"><span class="msgText">${escapeHtml(l.message)}</span><span class="lineActions"><button type="button" title="대사 수정" onclick="openEditLine(${idx})">✎</button><button type="button" title="줄 삭제" onclick="deleteLine(${idx})">✕</button></span></span>
       <span class="time">${escapeHtml(l.time)}</span>
@@ -1280,6 +1440,7 @@ function renderLogView(){
   if(parchmentBox){
     parchmentBox.classList.toggle('hide-tags', !showTags);
     parchmentBox.classList.toggle('hide-time', !showTime);
+    parchmentBox.classList.toggle('abbrev-tags', abbrevTags);
     parchmentBox.classList.toggle('select-mode', selectMode);
     parchmentBox.style.setProperty('--tag-order', tagPosition === 'left' ? '1' : '4');
     parchmentBox.style.setProperty('--time-order', timePosition === 'left' ? '0' : '5');
@@ -1338,25 +1499,13 @@ function updateRenamePhotoPreview(){
 function handleRenamePhotoSelect(input){
   const file = input.files && input.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    const img = new Image();
-    img.onload = function(){
-      const size = 96;
-      const canvas = document.createElement('canvas');
-      canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      const scale = Math.max(size / img.width, size / img.height);
-      const w = img.width * scale, h = img.height * scale;
-      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-      pendingRenamePhoto = canvas.toDataURL('image/jpeg', 0.85);
-      updateRenamePhotoPreview();
-      input.value = '';
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+  resizeImageFileToDataUrl(file, (dataUrl) => {
+    pendingRenamePhoto = dataUrl;
+    updateRenamePhotoPreview();
+    input.value = '';
+  });
 }
+
 function removeRenamePhoto(){
   pendingRenamePhoto = '';
   updateRenamePhotoPreview();
@@ -1419,7 +1568,7 @@ function openTagPicker(idx){
   pendingTagLineIndex = parseInt(idx, 10);
   const list = document.getElementById('tagPickerList');
   list.innerHTML = Object.entries(CHANNELS).map(([key,c]) =>
-    `<span class="chip" style="background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}" onclick="pickTag('${key}')">${c.label}</span>`
+    `<span class="chip" style="background:${getChannelColor(key)};border-color:${getChannelColor(key)};color:${getContrastTextColor(getChannelColor(key))}" onclick="pickTag('${key}')">${channelLabel(key)}</span>`
   ).join('');
   document.getElementById('tagPickerOverlay').classList.add('show');
 }
@@ -1711,6 +1860,7 @@ document.addEventListener('click', function(e){
   const toggleBtn = document.getElementById('drawerToggle');
   if(!sidebar || !sidebar.classList.contains('open')) return;
   if(sidebar.contains(e.target) || (toggleBtn && toggleBtn.contains(e.target))) return;
+  if(e.target.closest('.overlay')) return; // 모달(또는 모달 닫기 버튼) 클릭은 무시
   sidebar.classList.remove('open');
 });
 
