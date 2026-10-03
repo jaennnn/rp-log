@@ -36,6 +36,8 @@ button{font-family:inherit;}
   font-weight:700; font-size:1.3rem; margin:0 20px 2px; color:#111; letter-spacing:-.01em;
 }
 #sidebar .sub{margin:0 20px 18px; font-size:.78rem; color:var(--muted);}
+.helpLink{display:inline-flex; align-items:center; color:#b0b0b0; margin-top:2px; transition:color .12s;}
+.helpLink:hover{color:#333;}
 #newBtn{
   margin:0 20px 14px; padding:10px 14px; background:var(--accent); color:#fff;
   border:none; border-radius:8px; font-family:inherit; font-size:.88rem; font-weight:500;
@@ -147,7 +149,7 @@ button{font-family:inherit;}
 .logline .msgText{flex:1; min-width:0;}
 .logline .lineActions{display:flex; gap:5px; flex-shrink:0; opacity:0; transition:opacity .12s;}
 .logline:hover .lineActions{opacity:1;}
-.logline .lineActions button{background:transparent; border:none; cursor:pointer; font-size:.82rem; color:#aaa; padding:0 2px; line-height:1;}
+.logline .lineActions button{background:transparent; border:none; cursor:pointer; font-size:.82rem; color:#aaa; padding:0; line-height:1; width:1.2rem; height:1.2rem; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;}
 .logline .lineActions button:hover{color:#111;}
 .logline.emote .msg{font-style:italic;}
 .logline.lineSelected{background:#e8e8e8; border-radius:4px;}
@@ -221,7 +223,10 @@ button{font-family:inherit;}
 
 <div id="sidebar">
   <div style="display:flex; align-items:center; justify-content:space-between; padding-right:20px;">
-    <h1>연대기</h1>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <h1 style="margin-right:0;">연대기</h1>
+      <a class="helpLink" href="https://app.notion.com/p/r0manc1er/3ee6f319a76780e79eb2d87b6b31fa74?source=copy_link" target="_blank" rel="noopener noreferrer" title="기능 설명" aria-label="기능 설명"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></a>
+    </div>
     <div style="display:flex; gap:4px;">
       <button class="iconbtn" title="인물 목록" onclick="openPeopleRoster()" style="padding:6px 9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
       <button class="iconbtn" title="전체 설정" onclick="openSettings()" style="padding:6px 9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15 1.65 1.65 0 0 0 3.09 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.29l.06.06A1.65 1.65 0 0 0 8.92 4.6 1.65 1.65 0 0 0 9.91 3.09V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.63.99 1.03 1.69 1.06H21a2 2 0 0 1 0 4h-.09A1.65 1.65 0 0 0 19.4 15z"/></svg></button>
@@ -331,6 +336,31 @@ button{font-family:inherit;}
   </div>
 </div>
 
+<div id="addLineOverlay" class="overlay">
+  <div class="modalbox" style="max-width:420px;">
+    <button type="button" class="modalCloseX" onclick="closeAddLine()">✕</button>
+    <h3>줄 추가</h3>
+    <div id="addLineTagList" class="chips" style="flex-wrap:wrap; overflow:visible; margin-bottom:12px;"></div>
+    <div style="display:flex; align-items:center; gap:3px;">
+      <label for="addLineTime" style="flex-shrink:0; width:3.6em; margin:0;">시간</label>
+      <input type="text" id="addLineTime" style="flex:1;" inputmode="numeric">
+    </div>
+    <div style="display:flex; align-items:center; gap:3px; margin-top:10px;">
+      <label for="addLineSpeaker" style="flex-shrink:0; width:3.6em; margin:0;">이름</label>
+      <input type="text" id="addLineSpeaker" style="flex:1;" list="addLinePeopleList" autocomplete="off">
+      <datalist id="addLinePeopleList"></datalist>
+    </div>
+    <div style="display:flex; align-items:flex-start; gap:3px; margin-top:10px;">
+      <label for="addLineMessage" style="flex-shrink:0; width:3.6em; margin:0; padding-top:9px;">내용</label>
+      <textarea id="addLineMessage" style="flex:1; min-height:80px;" onkeydown="if(event.key==='Enter' && !event.shiftKey && !event.isComposing){ event.preventDefault(); confirmAddLine(); }"></textarea>
+    </div>
+    <div class="row">
+      <button class="iconbtn" onclick="closeAddLine()">취소</button>
+      <button class="primary" onclick="confirmAddLine()">추가</button>
+    </div>
+  </div>
+</div>
+
 <div id="settingsOverlay" class="overlay">
   <div class="modalbox" style="max-width:340px;">
     <button type="button" class="modalCloseX" onclick="closeSettings()">✕</button>
@@ -421,6 +451,10 @@ button{font-family:inherit;}
   <div class="modalbox" style="max-width:520px;">
     <button type="button" class="modalCloseX" onclick="closeTextExport()">✕</button>
     <h3>내보내기</h3>
+    <div id="textExportTabs" class="posGroup" style="display:none; margin-bottom:10px;">
+      <button type="button" class="posBtn active" data-mode="code" onclick="setLogExportMode('code')">공유 코드</button>
+      <button type="button" class="posBtn" data-mode="text" onclick="setLogExportMode('text')">텍스트</button>
+    </div>
     <p id="textExportDesc" style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
       아래 코드를 복사해서 보관하세요. 다른 기기에서 "가져오기"에 붙여넣으면 그대로 복원돼요.
     </p>
@@ -1410,6 +1444,7 @@ function renderLogView(){
   const toolbarHtml = `<div class="logToolbarInner">
     ${selectMode ? `<button type="button" class="toolbarBtn" onclick="openBulkTagPicker()">태그 변경</button>
     <button type="button" class="toolbarBtn danger" onclick="bulkDeleteLines()">선택 삭제</button>` : ''}
+    <button type="button" class="toolbarIconBtn" title="줄 추가" onclick="openAddLine()"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     <button type="button" class="toolbarIconBtn ${selectMode ? 'active' : ''}" title="여러 줄 선택" onclick="toggleSelectMode()"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></button>
   </div>`;
 
@@ -1421,17 +1456,17 @@ function renderLogView(){
     const idx = a.lines.indexOf(l);
     const isSelected = selectMode && selectedLineIndices.has(idx);
     if(selectMode){
-      return `<div class="logline ${isEmote?'emote':''} ${isSelected?'lineSelected':''}" onclick="toggleLineSelect(${idx})">
+      return `<div class="logline ${isEmote?'emote':''} ${isSelected?'lineSelected':''}" data-line-idx="${idx}" onclick="toggleLineSelect(${idx})">
         <span class="tag" style="background:${chColor}; color:${getContrastTextColor(chColor)}">${channelLabel(l.channel)}</span>
         ${l.speaker ? `<span class="speaker" style="color:${nameColor}">${getPersonPhoto(l.speaker) ? `<img class="speakerPhoto" src="${getPersonPhoto(l.speaker)}">` : ''}<span class="speakerNameText">${escapeHtml(l.speaker)}</span></span>` : ''}
         <span class="msg"><span class="msgText">${escapeHtml(l.message)}</span></span>
         <span class="time">${escapeHtml(l.time)}</span>
       </div>`;
     }
-    return `<div class="logline ${isEmote?'emote':''}">
+    return `<div class="logline ${isEmote?'emote':''}" data-line-idx="${idx}">
       <span class="tag" style="background:${chColor}; color:${getContrastTextColor(chColor)}" data-idx="${idx}" onclick="openTagPicker(this.dataset.idx)">${channelLabel(l.channel)}</span>
       ${l.speaker ? `<span class="speaker" style="color:${nameColor}" data-speaker="${escapeHtml(l.speaker)}" onclick="openRename(this.dataset.speaker)">${getPersonPhoto(l.speaker) ? `<img class="speakerPhoto" src="${getPersonPhoto(l.speaker)}">` : ''}<span class="speakerNameText">${escapeHtml(l.speaker)}</span></span>` : ''}
-      <span class="msg"><span class="msgText">${escapeHtml(l.message)}</span><span class="lineActions"><button type="button" title="대사 수정" onclick="openEditLine(${idx})">✎</button><button type="button" title="줄 삭제" onclick="deleteLine(${idx})">✕</button></span></span>
+      <span class="msg"><span class="msgText">${escapeHtml(l.message)}</span><span class="lineActions"><button type="button" title="아래에 줄 추가" onclick="openAddLine(${idx + 1})">+</button><button type="button" title="대사 수정" onclick="openEditLine(${idx})">✎</button><button type="button" title="줄 삭제" onclick="deleteLine(${idx})">✕</button></span></span>
       <span class="time">${escapeHtml(l.time)}</span>
     </div>`;
   }).join('') : '<div class="noresult">조건에 맞는 대화가 없어요.</div>';
@@ -1584,6 +1619,67 @@ function pickTag(key){
   persist();
   closeTagPicker();
   renderLogView();
+}
+
+let pendingAddLineIndex = null;
+let pendingAddLineChannel = 'say';
+// 줄을 직접 추가할 때 raw(원문)를 파서가 같은 채널로 다시 읽을 수 있는 형식으로 만들기 위한 태그 표기
+const RAW_TAG = { say:'say', shout:'shout', yell:'yell', party:'party', alliance:'alliance', fc:'fc', linkshell:'linkshell', cwlinkshell:'서초링', tell:'tell', emote:'emote', pvp:'pvp', other:'other' };
+function openAddLine(insertIndex){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  const at = (typeof insertIndex === 'number') ? Math.max(0, Math.min(insertIndex, a.lines.length)) : a.lines.length;
+  pendingAddLineIndex = at;
+  const ref = a.lines[at - 1] || a.lines[at];
+  pendingAddLineChannel = (ref && CHANNELS[ref.channel]) ? ref.channel : 'say';
+  document.getElementById('addLineTime').value = ref ? (ref.time || '') : '';
+  document.getElementById('addLineSpeaker').value = '';
+  document.getElementById('addLineMessage').value = '';
+  document.getElementById('addLinePeopleList').innerHTML = (a.people || []).map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+  renderAddLineTags();
+  document.getElementById('addLineOverlay').classList.add('show');
+  setTimeout(() => { document.getElementById('addLineMessage').focus(); }, 30);
+}
+function closeAddLine(){
+  pendingAddLineIndex = null;
+  document.getElementById('addLineOverlay').classList.remove('show');
+}
+function renderAddLineTags(){
+  const list = document.getElementById('addLineTagList');
+  if(!list) return;
+  list.innerHTML = Object.keys(CHANNELS).map(key => {
+    const on = key === pendingAddLineChannel;
+    const col = getChannelColor(key);
+    return `<span class="chip ${on ? 'on' : ''}" style="${on ? `background:${col};border-color:${col};color:${getContrastTextColor(col)}` : ''}" onclick="pickAddLineTag('${key}')">${channelLabel(key)}</span>`;
+  }).join('');
+}
+function pickAddLineTag(key){
+  pendingAddLineChannel = key;
+  renderAddLineTags();
+}
+function confirmAddLine(){
+  const a = archives.find(x => x.id === currentId);
+  if(!a || pendingAddLineIndex === null) return;
+  const message = (document.getElementById('addLineMessage').value || '').replace(/\s*\r?\n\s*/g, ' ').trim();
+  if(!message){ alert('내용을 입력해주세요.'); return; }
+  const timeText = (document.getElementById('addLineTime').value || '').trim();
+  const speakerText = (document.getElementById('addLineSpeaker').value || '').replace(/[:\[\]]/g, '').trim().slice(0, 32);
+  const ch = pendingAddLineChannel;
+  const rawTime = /^\d{1,2}:\d{2}(:\d{2})?$/.test(timeText) ? `[${timeText}]` : '';
+  const nw = extractNameAndWorld(speakerText);
+  const raw = nw.clean ? `${rawTime}[${RAW_TAG[ch]}] ${speakerText}: ${message}` : `${rawTime}[${RAW_TAG[ch]}] ${message}`;
+  const line = applyGlobalRename({ time: timeText, channel: ch, speaker: nw.clean, originalWorld: nw.world, message, raw });
+  const at = pendingAddLineIndex;
+  a.lines.splice(at, 0, line);
+  a.people = derivePeopleFromLines(a.lines);
+  activeFilters.add(ch);
+  persist();
+  closeAddLine();
+  renderLogView();
+  renderPeopleTags();
+  renderSidebar();
+  const el = document.querySelector(`.logline[data-line-idx="${at}"]`);
+  if(el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 let pendingEditLineIndex = null;
@@ -1773,6 +1869,8 @@ function showTextExportModal(text, isCode){
   const desc = document.getElementById('textExportDesc');
   const copyBtn = document.getElementById('textExportCopyBtn');
   if(!overlay || !area) return;
+  const tabs = document.getElementById('textExportTabs');
+  if(tabs) tabs.style.display = 'none';
   area.value = text;
   if(desc) desc.textContent = isCode
     ? '아래 코드를 복사해서 보관하세요. 다른 기기에서 "가져오기"에 붙여넣으면 그대로 복원돼요.'
@@ -1832,6 +1930,10 @@ async function requestImportOverwrite(rawText){
   let data;
   try{ data = JSON.parse(jsonText); }
   catch(e){ alert('이 코드를 읽을 수 없어요. 올바른 내보내기 코드인지 확인해주세요.'); return; }
+  if(data && data.kind === 'ffxiv-chat-archive-log' && data.archive && Array.isArray(data.archive.lines)){
+    importSharedLog(data);
+    return;
+  }
   if(!data || !Array.isArray(data.archives)){
     alert('올바른 내보내기 코드가 아니에요.');
     return;
@@ -1848,11 +1950,82 @@ async function requestImportOverwrite(rawText){
   document.getElementById('confirmOverlay').classList.add('show');
 }
 
-function exportArchive(id){
+// 내보낼 때는 원문에 남아있는 서버명(예: 나즈문톤베리 → 나즈문)을 빼고 내보냄
+function exportRawLine(l){
+  let r = l.raw || '';
+  if(l.speaker){
+    for(const w of WORLD_SUFFIXES) r = r.split(l.speaker + w).join(l.speaker);
+  }
+  return r;
+}
+let logExportData = null;
+async function exportArchive(id){
   const a = archives.find(x => x.id === id);
   if(!a) return;
-  const text = a.lines.map(l => l.raw).join('\n');
-  showTextExportModal(text, false);
+  const plain = a.lines.map(exportRawLine).join('\n');
+  // 이 로그에 나오는 인물의 정보(사진 제외)도 함께 담아요
+  const profiles = {};
+  (a.people || []).forEach(n => {
+    const pr = globalProfiles[n];
+    if(pr) profiles[n] = { color: pr.color || '', age: pr.age || '', job: pr.job || '', notes: pr.notes || '' };
+  });
+  const payload = {
+    kind: 'ffxiv-chat-archive-log',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    archive: {
+      name: a.name, createdAt: a.createdAt, place: a.place || '', description: a.description || '',
+      lines: a.lines.map(l => ({ time: l.time, channel: l.channel, speaker: l.speaker, message: l.message, raw: exportRawLine(l) }))
+    },
+    profiles
+  };
+  const code = await encodeBackupCode(JSON.stringify(payload));
+  logExportData = { code, text: plain };
+  showTextExportModal(code, true);
+  const tabs = document.getElementById('textExportTabs');
+  if(tabs) tabs.style.display = '';
+  setLogExportMode('code');
+}
+function setLogExportMode(mode){
+  if(!logExportData) return;
+  const area = document.getElementById('textExportArea');
+  const desc = document.getElementById('textExportDesc');
+  const copyBtn = document.getElementById('textExportCopyBtn');
+  area.value = mode === 'code' ? logExportData.code : logExportData.text;
+  if(desc) desc.textContent = mode === 'code'
+    ? '아래 코드를 복사해서 공유하세요. 받는 쪽에서 "가져오기"에 붙여넣으면 이 로그가 새 기록으로 추가돼요.'
+    : '아래 내용을 복사해서 메모장이나 메일 등에 저장해주세요.';
+  if(copyBtn) copyBtn.textContent = mode === 'code' ? '코드 복사' : '전체 복사';
+  document.querySelectorAll('#textExportTabs .posBtn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  area.focus(); area.select();
+}
+// 공유받은 로그 코드: 기존 기록은 그대로 두고 새 기록으로 추가
+function importSharedLog(data){
+  const src = data.archive;
+  const lines = src.lines.map(l => applyGlobalRename({
+    time: l.time || '', channel: CHANNELS[l.channel] ? l.channel : 'other', speaker: l.speaker || '',
+    message: l.message || '', raw: l.raw || l.message || ''
+  }));
+  const entry = {
+    id: 'a' + Date.now() + Math.floor(Math.random() * 1000),
+    name: src.name || '이름 없는 기록',
+    createdAt: src.createdAt || new Date().toISOString(),
+    place: src.place || '', description: src.description || '',
+    people: derivePeopleFromLines(lines), lines
+  };
+  // 이미 저장해 둔 인물 정보는 건드리지 않고, 없는 인물만 채워요
+  Object.entries(data.profiles || {}).forEach(([name, pr]) => {
+    if(!globalProfiles[name]) globalProfiles[name] = { color: pr.color || '', age: pr.age || '', job: pr.job || '', notes: pr.notes || '', photo: '' };
+  });
+  saveGlobalProfiles();
+  archives.unshift(entry);
+  persist();
+  currentId = entry.id;
+  closeImportModal();
+  closeSettings();
+  renderSidebar();
+  renderMain();
+  alert(`"${entry.name}" 로그를 새 기록으로 추가했어요.`);
 }
 
 document.addEventListener('click', function(e){
