@@ -2217,8 +2217,13 @@ function pathRoundRect(ctx, x, y, w, h, r){
 }
 async function renderLogPages(lines, opts = {}){
   const W = 720, PAD = 24, SCALE = 2, LH = 22, VPAD = 8, GAP = 10, SPEAKER_W = 108;
+  const LH2 = 15 * 2.3;   // 대사가 두 줄 이상일 때 줄 간격: 글자 크기(15px)의 230%
   const MAXH = opts.maxH || 3200, MINH = opts.minH || 0;
-  const HEADER_H = opts.title ? 64 : 0;
+  const COVER_W = W - PAD * 2, COVER_H = COVER_W / 3;
+  const COVER_BLOCK = opts.title && opts.cover ? COVER_H : 0;   // 첫 쪽에만 들어가는 대표 이미지(3:1)
+  const HEADER_TOP = 24, HEADER_BOTTOM = 24;                    // 제목 위 / 날짜(구분선) 아래 여백
+  const HEADER_BASE = HEADER_TOP + 62 + 1 + HEADER_BOTTOM;
+  const HEADER_H = opts.title ? HEADER_BASE + COVER_BLOCK : 0;
   const FONT = '"Noto Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   try{
     await Promise.all([
@@ -2236,6 +2241,12 @@ async function renderLogPages(lines, opts = {}){
     im.onerror = () => res();
     im.src = getPersonPhoto(n);
   })));
+  let coverImg = null;
+  if(COVER_BLOCK){
+    coverImg = await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = opts.cover; });
+  }
+  const headerH = HEADER_H - (COVER_BLOCK && !coverImg ? COVER_BLOCK : 0);   // 이미지를 못 읽으면 자리도 비워요
+  const coverBlock = coverImg ? COVER_BLOCK : 0;
   const meas = document.createElement('canvas').getContext('2d');
   const tagW = showTags ? (abbrevTags ? 34 : 54) : 0;
   let timeW = 0;
@@ -2250,17 +2261,17 @@ async function renderLogPages(lines, opts = {}){
     const isEmote = l.channel === 'emote';
     meas.font = `${isEmote ? 'italic ' : ''}400 15px ${FONT}`;
     const wrapped = wrapText(meas, l.message || '', msgW);
-    return { l, spX, msgX, isEmote, wrapped, h: wrapped.length * LH + VPAD * 2 };
+    return { l, spX, msgX, isEmote, wrapped, h: Math.ceil(LH + (wrapped.length - 1) * LH2 + VPAD * 2) };
   });
   const pages = [];
-  let cur = [], curH = PAD * 2 + HEADER_H;
+  let cur = [], curH = PAD * 2 + headerH;
   rows.forEach(r => {
     if(cur.length && curH + r.h > MAXH){ pages.push(cur); cur = []; curH = PAD * 2; }
     cur.push(r); curH += r.h;
   });
   if(cur.length) pages.push(cur);
   return pages.map((pageRows, pi) => {
-    const top0 = pi === 0 ? HEADER_H : 0;
+    const top0 = pi === 0 ? headerH : 0;
     const H = Math.max(MINH, PAD * 2 + top0 + pageRows.reduce((sum, r) => sum + r.h, 0));
     const cv = document.createElement('canvas');
     cv.width = W * SCALE; cv.height = H * SCALE;
@@ -2270,11 +2281,19 @@ async function renderLogPages(lines, opts = {}){
     ctx.fillRect(0, 0, W, H);
     ctx.textBaseline = 'middle';
     if(pi === 0 && opts.title){
+      if(coverImg){
+        ctx.save();
+        pathRoundRect(ctx, PAD, PAD, COVER_W, COVER_H, 10);
+        ctx.clip();
+        ctx.drawImage(coverImg, PAD, PAD, COVER_W, COVER_H);
+        ctx.restore();
+      }
+      const hy = PAD + coverBlock;
       ctx.textAlign = 'left';
       ctx.font = `700 20px ${FONT}`; ctx.fillStyle = '#111111';
-      ctx.fillText(fitText(ctx, opts.title, W - PAD * 2), PAD, PAD + 14);
-      if(opts.meta){ ctx.font = `400 12px ${FONT}`; ctx.fillStyle = '#8c8c8c'; ctx.fillText(opts.meta, PAD, PAD + 40); }
-      ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(PAD, PAD + 54, W - PAD * 2, 1);
+      ctx.fillText(fitText(ctx, opts.title, W - PAD * 2), PAD, hy + HEADER_TOP + 14);
+      if(opts.meta){ ctx.font = `400 12px ${FONT}`; ctx.fillStyle = '#8c8c8c'; ctx.fillText(opts.meta, PAD, hy + HEADER_TOP + 40); }
+      ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(PAD, hy + HEADER_TOP + 62, W - PAD * 2, 1);
     }
     let y = PAD + top0;
     pageRows.forEach((r, i) => {
@@ -2299,7 +2318,7 @@ async function renderLogPages(lines, opts = {}){
       ctx.textAlign = 'left';
       ctx.font = `${r.isEmote ? 'italic ' : ''}400 15px ${FONT}`;
       ctx.fillStyle = '#1f1f1f';
-      r.wrapped.forEach((t, k) => ctx.fillText(t, r.msgX, cy + k * LH));
+      r.wrapped.forEach((t, k) => ctx.fillText(t, r.msgX, cy + k * LH2));
       if(timeW && l.time){
         ctx.font = `400 12px ${FONT}`; ctx.fillStyle = '#a3a3a3'; ctx.textAlign = 'right';
         ctx.fillText(l.time, W - PAD, cy);
@@ -2316,6 +2335,15 @@ async function renderLogPages(lines, opts = {}){
 }
 async function renderLogImages(lines){
   return (await renderLogPages(lines)).map(p => p.url);
+}
+// PDF와 이미지가 똑같이 보이도록 같은 옵션을 써요 (대표 이미지는 첫 쪽에만, 제목·날짜·장소, 쪽 번호)
+function logPageOptions(a, extra){
+  return Object.assign({
+    title: a.name || '연대기 로그',
+    cover: a.cover || '',
+    meta: [fmtDate(a.createdAt), a.place].filter(Boolean).join(' · '),
+    pageNumbers: true
+  }, extra);
 }
 // 각 쪽의 JPEG를 그대로 넣은 PDF를 직접 만들어요(외부 라이브러리 없음)
 function buildPdfBlob(pages){
@@ -2393,11 +2421,7 @@ async function loadLogPdfPanel(){
   list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">PDF를 만드는 중...</div>';
   const token = ++logPdfToken;
   try{
-    const pages = await renderLogPages(lines, {
-      maxH: 1018, minH: 1018, jpeg: true, pageNumbers: true,
-      title: a.name || '연대기 로그',
-      meta: [fmtDate(a.createdAt), a.place].filter(Boolean).join(' · ')
-    });
+    const pages = await renderLogPages(lines, logPageOptions(a, { maxH: 1018, minH: 1018, jpeg: true }));
     if(token !== logPdfToken) return;
     const blob = buildPdfBlob(pages);
     logPdfBlob = blob;
@@ -2484,7 +2508,7 @@ async function loadLogImagePanel(){
   list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">이미지를 만드는 중...</div>';
   const token = ++logImageToken;
   let pages;
-  try{ pages = await renderLogImages(lines); }
+  try{ pages = (await renderLogPages(lines, logPageOptions(a, { maxH: 1018, minH: 1018 }))).map(pg => pg.url); }
   catch(e){
     if(token === logImageToken) list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">이미지를 만들지 못했어요.</div>';
     return;
@@ -2554,7 +2578,7 @@ async function openSelectedLinesImage(){
   document.getElementById('selectedImageOverlay').classList.add('show');
   const token = ++selImageToken;
   try{
-    const pages = await renderLogImages(lines);
+    const pages = (await renderLogPages(lines, logPageOptions(a))).map(pg => pg.url);
     if(token !== selImageToken) return;
     selImagePages = pages;
     list.innerHTML = pages.map((src, i) => `<img src="${src}" alt="선택한 줄 이미지 ${i + 1}" style="width:100%; display:block; border:1px solid var(--line); border-radius:6px;">`).join('');
