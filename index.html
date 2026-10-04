@@ -491,6 +491,25 @@ button{font-family:inherit;}
   </div>
 </div>
 
+<div id="coverCropOverlay" class="overlay">
+  <div class="modalbox" style="max-width:560px;">
+    <button type="button" class="modalCloseX" onclick="closeCoverCrop()">✕</button>
+    <h3>대표 이미지 조정</h3>
+    <div id="coverCropView" style="position:relative; width:100%; aspect-ratio:3 / 1; overflow:hidden; border-radius:10px; background:#222; cursor:grab; touch-action:none; user-select:none;">
+      <img id="coverCropImg" alt="" draggable="false" style="position:absolute; left:0; top:0; max-width:none; pointer-events:none; -webkit-user-drag:none;">
+      <div style="position:absolute; inset:0; pointer-events:none; background-image:linear-gradient(to right, transparent calc(33.33% - .5px), rgba(255,255,255,.4) calc(33.33% - .5px), rgba(255,255,255,.4) calc(33.33% + .5px), transparent calc(33.33% + .5px), transparent calc(66.66% - .5px), rgba(255,255,255,.4) calc(66.66% - .5px), rgba(255,255,255,.4) calc(66.66% + .5px), transparent calc(66.66% + .5px)), linear-gradient(to bottom, transparent calc(33.33% - .5px), rgba(255,255,255,.4) calc(33.33% - .5px), rgba(255,255,255,.4) calc(33.33% + .5px), transparent calc(33.33% + .5px), transparent calc(66.66% - .5px), rgba(255,255,255,.4) calc(66.66% - .5px), rgba(255,255,255,.4) calc(66.66% + .5px), transparent calc(66.66% + .5px));"></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:14px;">
+      <label for="coverCropZoom" style="margin:0; flex-shrink:0;">크기</label>
+      <input type="range" id="coverCropZoom" min="100" max="400" value="100" step="1" style="flex:1;" oninput="coverCropSetZoom(this.value / 100)">
+    </div>
+    <div class="row">
+      <button class="iconbtn" onclick="closeCoverCrop()">취소</button>
+      <button class="primary" onclick="applyCoverCrop()">적용</button>
+    </div>
+  </div>
+</div>
+
 <div id="selectedImageOverlay" class="overlay">
   <div class="modalbox" style="max-width:560px;">
     <button type="button" class="modalCloseX" onclick="closeSelectedImage()">✕</button>
@@ -1423,23 +1442,107 @@ function handleCoverFile(input){
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
-    img.onload = () => {
-      // 가운데 기준으로 3:1 비율로 잘라 1200x400으로 줄여요 (저장 공간을 아끼기 위해)
-      const W = 1200, H = 400;
-      const cv = document.createElement('canvas');
-      cv.width = W; cv.height = H;
-      const ctx = cv.getContext('2d');
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-      const scale = Math.max(W / img.width, H / img.height);
-      const w = img.width * scale, h = img.height * scale;
-      ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
-      setCover(cv.toDataURL('image/jpeg', 0.82));
-    };
+    img.onload = () => openCoverCrop(img);
     img.onerror = () => alert('이미지를 읽을 수 없어요. 다른 이미지로 시도해주세요.');
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
+// 자르기·크기 조정: 3:1 틀 안에서 드래그로 위치, 슬라이더/휠/두 손가락으로 크기를 맞춰요
+let cropState = null;
+function openCoverCrop(img){
+  const overlay = document.getElementById('coverCropOverlay');
+  const imgEl = document.getElementById('coverCropImg');
+  imgEl.src = img.src;
+  cropState = { img, iw: img.naturalWidth, ih: img.naturalHeight, vw: 0, vh: 0, s0: 1, z: 1, x: 0, y: 0, ptrs: new Map(), pinch: null };
+  document.getElementById('coverCropZoom').value = 100;
+  overlay.classList.add('show');
+  requestAnimationFrame(() => {
+    const view = document.getElementById('coverCropView');
+    const st = cropState; if(!st) return;
+    st.vw = view.clientWidth; st.vh = view.clientHeight;
+    st.s0 = Math.max(st.vw / st.iw, st.vh / st.ih);
+    st.x = (st.vw - st.iw * st.s0) / 2;
+    st.y = (st.vh - st.ih * st.s0) / 2;
+    coverCropRender();
+  });
+}
+function coverCropRender(){
+  const st = cropState; if(!st) return;
+  const s = st.s0 * st.z;
+  st.x = Math.min(0, Math.max(st.vw - st.iw * s, st.x));
+  st.y = Math.min(0, Math.max(st.vh - st.ih * s, st.y));
+  const imgEl = document.getElementById('coverCropImg');
+  imgEl.style.width = (st.iw * s) + 'px';
+  imgEl.style.height = (st.ih * s) + 'px';
+  imgEl.style.transform = `translate(${st.x}px, ${st.y}px)`;
+}
+function coverCropSetZoom(z){
+  const st = cropState; if(!st || !st.vw) return;
+  z = Math.min(4, Math.max(1, z));
+  const sOld = st.s0 * st.z, sNew = st.s0 * z;
+  const cx = (st.vw / 2 - st.x) / sOld, cy = (st.vh / 2 - st.y) / sOld;   // 틀 중앙에 있는 그림 위치를 고정
+  st.z = z;
+  st.x = st.vw / 2 - cx * sNew;
+  st.y = st.vh / 2 - cy * sNew;
+  document.getElementById('coverCropZoom').value = Math.round(z * 100);
+  coverCropRender();
+}
+function closeCoverCrop(){
+  document.getElementById('coverCropOverlay').classList.remove('show');
+  cropState = null;
+  document.getElementById('coverCropImg').removeAttribute('src');
+}
+function applyCoverCrop(){
+  const st = cropState; if(!st || !st.vw) return;
+  const W = 1200, H = 400, f = W / st.vw;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+  const s = st.s0 * st.z;
+  ctx.drawImage(st.img, st.x * f, st.y * f, st.iw * s * f, st.ih * s * f);
+  const url = cv.toDataURL('image/jpeg', 0.82);
+  closeCoverCrop();
+  setCover(url);
+}
+(function initCoverCrop(){
+  const view = document.getElementById('coverCropView');
+  if(!view) return;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  view.addEventListener('pointerdown', e => {
+    const st = cropState; if(!st) return;
+    view.setPointerCapture(e.pointerId);
+    st.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if(st.ptrs.size === 2){ const [a, b] = [...st.ptrs.values()]; st.pinch = { d0: dist(a, b), z0: st.z }; }
+    view.style.cursor = 'grabbing';
+  });
+  view.addEventListener('pointermove', e => {
+    const st = cropState; if(!st || !st.ptrs.has(e.pointerId)) return;
+    const prev = st.ptrs.get(e.pointerId), cur = { x: e.clientX, y: e.clientY };
+    st.ptrs.set(e.pointerId, cur);
+    if(st.ptrs.size === 1){
+      st.x += cur.x - prev.x; st.y += cur.y - prev.y;
+      coverCropRender();
+    } else if(st.ptrs.size === 2 && st.pinch){
+      const [a, b] = [...st.ptrs.values()];
+      coverCropSetZoom(st.pinch.z0 * dist(a, b) / st.pinch.d0);
+    }
+  });
+  const end = e => {
+    const st = cropState; if(!st) return;
+    st.ptrs.delete(e.pointerId);
+    if(st.ptrs.size < 2) st.pinch = null;
+    if(!st.ptrs.size) view.style.cursor = 'grab';
+  };
+  view.addEventListener('pointerup', end);
+  view.addEventListener('pointercancel', end);
+  view.addEventListener('wheel', e => {
+    const st = cropState; if(!st) return;
+    e.preventDefault();
+    coverCropSetZoom(st.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
+  }, { passive: false });
+})();
 function setCover(dataUrl){
   const a = archives.find(x => x.id === currentId);
   if(!a) return;
