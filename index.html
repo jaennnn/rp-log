@@ -454,14 +454,45 @@ button{font-family:inherit;}
     <div id="textExportTabs" class="posGroup" style="display:none; margin-bottom:10px;">
       <button type="button" class="posBtn active" data-mode="code" onclick="setLogExportMode('code')">공유 코드</button>
       <button type="button" class="posBtn" data-mode="text" onclick="setLogExportMode('text')">텍스트</button>
+      <button type="button" class="posBtn" data-mode="image" onclick="setLogExportMode('image')">이미지</button>
+      <button type="button" class="posBtn" data-mode="pdf" onclick="setLogExportMode('pdf')">PDF</button>
     </div>
     <p id="textExportDesc" style="color:var(--muted); font-size:.82rem; margin:0 0 8px;">
       아래 코드를 복사해서 보관하세요. 다른 기기에서 설정의 "가져오기"에 붙여넣으면 그대로 복원돼요.
     </p>
     <textarea id="textExportArea" class="field" readonly style="width:100%; min-height:200px; font-family:monospace; font-size:.78rem; word-break:break-all;"></textarea>
+    <div id="textExportImagePanel" style="display:none;">
+      <p id="logImageInfo" style="color:var(--muted); font-size:.82rem; margin:0 0 8px;"></p>
+      <div id="logImageList" style="display:flex; flex-direction:column; gap:10px; max-height:50vh; overflow-y:auto;"></div>
+      <p id="logImageStatus" style="color:var(--muted); font-size:.78rem; margin:6px 0 0;"></p>
+    </div>
+    <div id="textExportPdfPanel" style="display:none;">
+      <p id="logPdfInfo" style="color:var(--muted); font-size:.82rem; margin:0 0 8px;"></p>
+      <div id="logPdfList" style="display:flex; flex-direction:column; gap:10px; max-height:50vh; overflow-y:auto;"></div>
+      <p id="logPdfStatus" style="color:var(--muted); font-size:.78rem; margin:10px 0 0;"></p>
+    </div>
     <div class="row">
       <button class="iconbtn" onclick="closeTextExport()">닫기</button>
       <button class="primary" id="textExportCopyBtn" onclick="copyTextExport()">코드 복사</button>
+      <button id="logPdfOpenBtn" class="iconbtn" style="display:none;" onclick="openLogPdf()">새 탭에서 열기</button>
+      <button id="logPdfSaveBtn" class="primary" style="display:none;" onclick="saveLogPdf()">PDF 저장</button>
+      <button id="logImageSaveBtn" class="iconbtn" style="display:none;" onclick="saveLogImages()">이미지 저장</button>
+      <button id="logImageShareBtn" class="primary" style="display:none;" onclick="shareLogImages()">공유</button>
+    </div>
+  </div>
+</div>
+
+<div id="selectedImageOverlay" class="overlay">
+  <div class="modalbox" style="max-width:560px;">
+    <button type="button" class="modalCloseX" onclick="closeSelectedImage()">✕</button>
+    <h3>선택한 줄 이미지로 저장</h3>
+    <p id="selImgInfo" style="color:var(--muted); font-size:.82rem; margin:0 0 8px;"></p>
+    <div id="selImgList" style="display:flex; flex-direction:column; gap:10px; max-height:55vh; overflow-y:auto;"></div>
+    <p id="selImgStatus" style="color:var(--muted); font-size:.78rem; margin:10px 0 0;"></p>
+    <div class="row">
+      <button class="iconbtn" onclick="closeSelectedImage()">닫기</button>
+      <button id="selImgShareBtn" class="iconbtn" style="display:none;" onclick="shareSelectedImages()">공유</button>
+      <button id="selImgSaveBtn" class="primary" style="display:none;" onclick="saveSelectedImages()">이미지 저장</button>
     </div>
   </div>
 </div>
@@ -1349,6 +1380,8 @@ function renderSidebar(){
 function selectArchive(id){
   currentId = id;
   searchTerm = '';
+  selectMode = false;
+  selectedLineIndices.clear();
   activeFilters = new Set(Object.keys(CHANNELS));
   document.getElementById('sidebar').classList.remove('open');
   renderSidebar();
@@ -1448,7 +1481,8 @@ function renderLogView(){
     (!searchTerm || l.message.toLowerCase().includes(searchTerm) || l.speaker.toLowerCase().includes(searchTerm)));
 
   const toolbarHtml = `<div class="logToolbarInner">
-    ${selectMode ? `<button type="button" class="toolbarBtn" onclick="openBulkTagPicker()">태그 변경</button>
+    ${selectMode ? `<button type="button" class="toolbarBtn" onclick="openSelectedLinesImage()">이미지로 저장</button>
+    <button type="button" class="toolbarBtn" onclick="openBulkTagPicker()">태그 변경</button>
     <button type="button" class="toolbarBtn danger" onclick="bulkDeleteLines()">선택 삭제</button>` : ''}
     <button type="button" class="toolbarIconBtn ${selectMode ? 'active' : ''}" title="여러 줄 선택" onclick="toggleSelectMode()"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></button>
   </div>`;
@@ -1876,6 +1910,14 @@ function showTextExportModal(text, isCode){
   if(!overlay || !area) return;
   const tabs = document.getElementById('textExportTabs');
   if(tabs) tabs.style.display = 'none';
+  area.style.display = '';
+  if(desc) desc.style.display = '';
+  if(copyBtn) copyBtn.style.display = '';
+  const imgPanel = document.getElementById('textExportImagePanel');
+  if(imgPanel) imgPanel.style.display = 'none';
+  const pdfPanel = document.getElementById('textExportPdfPanel');
+  if(pdfPanel) pdfPanel.style.display = 'none';
+  ['logImageShareBtn', 'logImageSaveBtn', 'logPdfSaveBtn', 'logPdfOpenBtn'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   area.value = text;
   if(desc) desc.textContent = isCode
     ? '아래 코드를 복사해서 보관하세요. 다른 기기에서 설정의 "가져오기"에 붙여넣으면 그대로 복원돼요.'
@@ -1886,6 +1928,10 @@ function showTextExportModal(text, isCode){
 }
 function closeTextExport(){
   document.getElementById('textExportOverlay').classList.remove('show');
+  logImageToken++; logImageReady = false; logImagePages = [];
+  const list = document.getElementById('logImageList');
+  if(list) list.innerHTML = '';
+  resetLogPdf();
 }
 async function copyTextExport(){
   const area = document.getElementById('textExportArea');
@@ -1963,8 +2009,399 @@ function exportRawLine(l){
   }
   return r;
 }
+// ---- 로그를 이미지로 공유 ----
+let logImagePages = [];
+function wrapText(ctx, text, maxW){
+  const out = []; let cur = '';
+  const tokens = text.match(/\s+|\S+/g) || [''];
+  for(const tk of tokens){
+    if(ctx.measureText(cur + tk).width <= maxW){ cur += tk; continue; }
+    if(/^\s+$/.test(tk)){ out.push(cur.trimEnd()); cur = ''; continue; }
+    if(cur){ out.push(cur.trimEnd()); cur = ''; }
+    let chunk = '';
+    for(const ch of tk){
+      if(chunk && ctx.measureText(chunk + ch).width > maxW){ out.push(chunk); chunk = ch; }
+      else chunk += ch;
+    }
+    cur = chunk;
+  }
+  if(cur) out.push(cur);
+  return out.length ? out : [''];
+}
+function fitText(ctx, text, maxW){
+  if(ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while(t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+  return t + '…';
+}
+function pathRoundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+async function renderLogPages(lines, opts = {}){
+  const W = 720, PAD = 24, SCALE = 2, LH = 22, VPAD = 8, GAP = 10, SPEAKER_W = 108;
+  const MAXH = opts.maxH || 3200, MINH = opts.minH || 0;
+  const HEADER_H = opts.title ? 64 : 0;
+  const FONT = '"Noto Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  try{
+    await Promise.all([
+      document.fonts.load('400 15px "Noto Sans KR"'),
+      document.fonts.load('600 15px "Noto Sans KR"'),
+      document.fonts.load('700 11px "Noto Sans KR"'),
+      document.fonts.load('700 20px "Noto Sans KR"')
+    ]);
+  }catch(e){}
+  const photos = {};
+  const names = [...new Set(lines.map(l => l.speaker).filter(n => n && getPersonPhoto(n)))];
+  await Promise.all(names.map(n => new Promise(res => {
+    const im = new Image();
+    im.onload = () => { photos[n] = im; res(); };
+    im.onerror = () => res();
+    im.src = getPersonPhoto(n);
+  })));
+  const meas = document.createElement('canvas').getContext('2d');
+  const tagW = showTags ? (abbrevTags ? 34 : 54) : 0;
+  let timeW = 0;
+  if(showTime){
+    meas.font = `400 12px ${FONT}`;
+    timeW = Math.ceil(Math.max(0, ...lines.map(l => meas.measureText(l.time || '').width)));
+  }
+  const rows = lines.map(l => {
+    const spX = PAD + (tagW ? tagW + GAP : 0);
+    const msgX = spX + (l.speaker ? SPEAKER_W + GAP : 0);
+    const msgW = W - PAD - msgX - (timeW ? timeW + GAP : 0);
+    const isEmote = l.channel === 'emote';
+    meas.font = `${isEmote ? 'italic ' : ''}400 15px ${FONT}`;
+    const wrapped = wrapText(meas, l.message || '', msgW);
+    return { l, spX, msgX, isEmote, wrapped, h: wrapped.length * LH + VPAD * 2 };
+  });
+  const pages = [];
+  let cur = [], curH = PAD * 2 + HEADER_H;
+  rows.forEach(r => {
+    if(cur.length && curH + r.h > MAXH){ pages.push(cur); cur = []; curH = PAD * 2; }
+    cur.push(r); curH += r.h;
+  });
+  if(cur.length) pages.push(cur);
+  return pages.map((pageRows, pi) => {
+    const top0 = pi === 0 ? HEADER_H : 0;
+    const H = Math.max(MINH, PAD * 2 + top0 + pageRows.reduce((sum, r) => sum + r.h, 0));
+    const cv = document.createElement('canvas');
+    cv.width = W * SCALE; cv.height = H * SCALE;
+    const ctx = cv.getContext('2d');
+    ctx.scale(SCALE, SCALE);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = 'middle';
+    if(pi === 0 && opts.title){
+      ctx.textAlign = 'left';
+      ctx.font = `700 20px ${FONT}`; ctx.fillStyle = '#111111';
+      ctx.fillText(fitText(ctx, opts.title, W - PAD * 2), PAD, PAD + 14);
+      if(opts.meta){ ctx.font = `400 12px ${FONT}`; ctx.fillStyle = '#8c8c8c'; ctx.fillText(opts.meta, PAD, PAD + 40); }
+      ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(PAD, PAD + 54, W - PAD * 2, 1);
+    }
+    let y = PAD + top0;
+    pageRows.forEach((r, i) => {
+      const l = r.l, cy = y + VPAD + LH / 2;
+      if(i > 0){ ctx.fillStyle = 'rgba(0,0,0,0.07)'; ctx.fillRect(PAD, y, W - PAD * 2, 1); }
+      if(tagW){
+        const col = getChannelColor(l.channel);
+        pathRoundRect(ctx, PAD, cy - 9, tagW, 18, 9);
+        ctx.fillStyle = col; ctx.fill();
+        ctx.fillStyle = getContrastTextColor(col);
+        ctx.font = `700 11px ${FONT}`; ctx.textAlign = 'center';
+        ctx.fillText(channelLabel(l.channel), PAD + tagW / 2, cy + 0.5);
+      }
+      if(l.speaker){
+        let nx = r.spX;
+        const ph = photos[l.speaker];
+        if(ph){ ctx.drawImage(ph, nx, cy - 8, 16, 16); nx += 20; }
+        ctx.textAlign = 'left'; ctx.font = `600 15px ${FONT}`;
+        ctx.fillStyle = getPersonColor(l.speaker) || '#1f1f1f';
+        ctx.fillText(fitText(ctx, l.speaker, SPEAKER_W - (nx - r.spX)), nx, cy);
+      }
+      ctx.textAlign = 'left';
+      ctx.font = `${r.isEmote ? 'italic ' : ''}400 15px ${FONT}`;
+      ctx.fillStyle = '#1f1f1f';
+      r.wrapped.forEach((t, k) => ctx.fillText(t, r.msgX, cy + k * LH));
+      if(timeW && l.time){
+        ctx.font = `400 12px ${FONT}`; ctx.fillStyle = '#a3a3a3'; ctx.textAlign = 'right';
+        ctx.fillText(l.time, W - PAD, cy);
+      }
+      y += r.h;
+    });
+    if(opts.pageNumbers){
+      ctx.font = `400 11px ${FONT}`; ctx.fillStyle = '#b5b5b5'; ctx.textAlign = 'center';
+      ctx.fillText(`${pi + 1} / ${pages.length}`, W / 2, H - 12);
+    }
+    const url = opts.jpeg ? cv.toDataURL('image/jpeg', 0.88) : cv.toDataURL('image/png');
+    return { url, w: cv.width, h: cv.height };
+  });
+}
+async function renderLogImages(lines){
+  return (await renderLogPages(lines)).map(p => p.url);
+}
+// 각 쪽의 JPEG를 그대로 넣은 PDF를 직접 만들어요(외부 라이브러리 없음)
+function buildPdfBlob(pages){
+  const enc = new TextEncoder();
+  const chunks = [], offsets = [];
+  let pos = 0;
+  const push = d => { const u = typeof d === 'string' ? enc.encode(d) : d; chunks.push(u); pos += u.length; };
+  const startObj = n => { offsets[n] = pos; push(`${n} 0 obj\n`); };
+  const PW = 595.28;
+  push('%PDF-1.4\n'); push(new Uint8Array([0x25, 0xE2, 0xE3, 0xCF, 0xD3, 0x0A]));
+  startObj(1); push('<</Type/Catalog/Pages 2 0 R>>\nendobj\n');
+  startObj(2); push(`<</Type/Pages/Count ${pages.length}/Kids [${pages.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}]>>\nendobj\n`);
+  pages.forEach((pg, i) => {
+    const pageNo = 3 + i * 3, contentNo = pageNo + 1, imgNo = pageNo + 2;
+    const ph = +(PW * pg.h / pg.w).toFixed(2);
+    startObj(pageNo);
+    push(`<</Type/Page/Parent 2 0 R/MediaBox [0 0 ${PW} ${ph}]/Resources<</XObject<</Im0 ${imgNo} 0 R>>>>/Contents ${contentNo} 0 R>>\nendobj\n`);
+    const content = `q ${PW} 0 0 ${ph} 0 0 cm /Im0 Do Q`;
+    startObj(contentNo);
+    push(`<</Length ${content.length}>>\nstream\n${content}\nendstream\nendobj\n`);
+    const jpg = base64ToBytes(pg.url.split(',')[1]);
+    startObj(imgNo);
+    push(`<</Type/XObject/Subtype/Image/Width ${pg.w}/Height ${pg.h}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${jpg.length}>>\nstream\n`);
+    push(jpg); push('\nendstream\nendobj\n');
+  });
+  const total = 3 + pages.length * 3;
+  const xrefPos = pos;
+  let xref = `xref\n0 ${total}\n0000000000 65535 f \n`;
+  for(let k = 1; k < total; k++) xref += String(offsets[k]).padStart(10, '0') + ' 00000 n \n';
+  push(xref);
+  push(`trailer\n<</Size ${total}/Root 1 0 R>>\nstartxref\n${xrefPos}\n%%EOF`);
+  return new Blob(chunks, { type: 'application/pdf' });
+}
+function dataUrlToBlob(dataUrl){
+  const [head, b64] = dataUrl.split(',');
+  const mime = head.match(/:(.*?);/)[1];
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+let logImageReady = false;
+let logImageToken = 0;
+let logPdfReady = false, logPdfToken = 0, logPdfBlob = null, logPdfFilename = '연대기_로그.pdf', logPdfUrl = '';
+// 이미지/PDF 탭 공통: 지금 화면에 보이는(필터·검색 반영) 대사 전체 (선택한 줄만 저장하는 건 별도 창)
+function getLogExportLines(a){
+  return {
+    lines: a.lines.filter(l => activeFilters.has(l.channel) &&
+      (!searchTerm || l.message.toLowerCase().includes(searchTerm) || l.speaker.toLowerCase().includes(searchTerm))),
+    scope: '대사'
+  };
+}
+function resetLogPdf(){
+  logPdfToken++; logPdfReady = false; logPdfBlob = null;
+  if(logPdfUrl){ URL.revokeObjectURL(logPdfUrl); logPdfUrl = ''; }
+  const list = document.getElementById('logPdfList'); if(list) list.innerHTML = '';
+  const st = document.getElementById('logPdfStatus'); if(st) st.textContent = '';
+}
+async function loadLogPdfPanel(){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  const list = document.getElementById('logPdfList');
+  const info = document.getElementById('logPdfInfo');
+  const status = document.getElementById('logPdfStatus');
+  const saveBtn = document.getElementById('logPdfSaveBtn');
+  const openBtn = document.getElementById('logPdfOpenBtn');
+  if(logPdfReady){ saveBtn.style.display = ''; openBtn.style.display = ''; return; }
+  saveBtn.style.display = 'none'; openBtn.style.display = 'none';
+  status.textContent = ''; info.textContent = '';
+  const { lines, scope } = getLogExportLines(a);
+  if(!lines.length){
+    list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">PDF로 만들 대사가 없어요.</div>';
+    return;
+  }
+  list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">PDF를 만드는 중...</div>';
+  const token = ++logPdfToken;
+  try{
+    const pages = await renderLogPages(lines, {
+      maxH: 1018, minH: 1018, jpeg: true, pageNumbers: true,
+      title: a.name || '연대기 로그',
+      meta: [fmtDate(a.createdAt), a.place].filter(Boolean).join(' · ')
+    });
+    if(token !== logPdfToken) return;
+    const blob = buildPdfBlob(pages);
+    logPdfBlob = blob;
+    logPdfFilename = ((a.name || '연대기 로그').replace(/[\/:*?"<>|]/g, '_').trim() || '연대기 로그') + '.pdf';
+    logPdfReady = true;
+    list.innerHTML = pages.map((pg, i) => `<img src="${pg.url}" alt="PDF ${i + 1}쪽" style="width:100%; display:block; border:1px solid var(--line); border-radius:6px;">`).join('');
+    info.textContent = `${scope} ${lines.length}줄 · PDF ${pages.length}쪽 · ${Math.max(1, Math.round(blob.size / 1024))}KB`;
+    saveBtn.style.display = ''; openBtn.style.display = '';
+  }catch(e){
+    if(token === logPdfToken) list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">PDF를 만들지 못했어요.</div>';
+  }
+}
+async function saveLogPdf(){
+  if(!logPdfBlob) return;
+  const status = document.getElementById('logPdfStatus');
+  let downloads = null;
+  try{ downloads = await claude.use('downloads'); }catch(e){}
+  if(downloads){
+    try{
+      await downloads.save({ filename: logPdfFilename, data: logPdfBlob });
+      status.textContent = 'PDF를 저장했어요.';
+      return;
+    }catch(e){
+      if(e && e.code === 'declined'){ status.textContent = ''; return; }
+      // 그 밖의 경우에는 아래 대체 방법을 시도해요
+    }
+  }
+  try{
+    const url = URL.createObjectURL(logPdfBlob);
+    const link = document.createElement('a');
+    link.href = url; link.download = logPdfFilename;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    status.textContent = '저장을 시도했어요. 저장되지 않으면 "새 탭에서 열기"를 눌러 열린 PDF에서 저장해주세요.';
+  }catch(e){
+    status.textContent = '이 화면에서는 바로 저장할 수 없어요. "새 탭에서 열기"를 이용해주세요.';
+  }
+}
+function openLogPdf(){
+  if(!logPdfBlob) return;
+  const status = document.getElementById('logPdfStatus');
+  if(logPdfUrl) URL.revokeObjectURL(logPdfUrl);
+  logPdfUrl = URL.createObjectURL(logPdfBlob);
+  const w = window.open(logPdfUrl, '_blank');
+  status.textContent = w ? '' : '새 탭이 열리지 않았어요. 팝업 차단을 해제하거나 "PDF 저장"을 이용해주세요.';
+}
+function updateLogImageButtons(){
+  const shareBtn = document.getElementById('logImageShareBtn');
+  const saveBtn = document.getElementById('logImageSaveBtn');
+  shareBtn.style.display = 'none';
+  saveBtn.style.display = logImagePages.length ? '' : 'none';
+  if(imageShareSupported()) shareBtn.style.display = '';
+}
+function imageShareSupported(){
+  try{
+    const probe = new File([''], 'a.png', { type: 'image/png' });
+    return typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [probe] });
+  }catch(e){ return false; }
+}
+function shareImagePages(pages, base){
+  const n = pages.length;
+  const files = pages.map((src, i) => new File([dataUrlToBlob(src)], n === 1 ? `${base}.png` : `${base}_${i + 1}.png`, { type: 'image/png' }));
+  navigator.share({ files }).catch(e => {
+    if(e && e.name !== 'AbortError') alert('공유에 실패했어요. 이미지를 길게 눌러 저장해주세요.');
+  });
+}
+// "이미지" 탭: 지금 화면에 보이는(필터·검색 반영) 대사 전체
+async function loadLogImagePanel(){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  if(logImageReady){ updateLogImageButtons(); return; }
+  const list = document.getElementById('logImageList');
+  const info = document.getElementById('logImageInfo');
+  document.getElementById('logImageShareBtn').style.display = 'none';
+  document.getElementById('logImageSaveBtn').style.display = 'none';
+  const { lines, scope } = getLogExportLines(a);
+  info.textContent = '';
+  document.getElementById('logImageStatus').textContent = '';
+  logImageBase = (a.name || '연대기 로그').replace(/[\\/:*?"<>|]/g, '_').trim() || '연대기 로그';
+  if(!lines.length){
+    list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">이미지로 만들 대사가 없어요.</div>';
+    return;
+  }
+  list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">이미지를 만드는 중...</div>';
+  const token = ++logImageToken;
+  let pages;
+  try{ pages = await renderLogImages(lines); }
+  catch(e){
+    if(token === logImageToken) list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">이미지를 만들지 못했어요.</div>';
+    return;
+  }
+  if(token !== logImageToken) return;
+  logImagePages = pages;
+  logImageReady = true;
+  list.innerHTML = pages.map((src, i) => `<img src="${src}" alt="로그 이미지 ${i + 1}" style="width:100%; display:block; border:1px solid var(--line); border-radius:6px;">`).join('');
+  info.textContent = `이미지 ${pages.length}장`;
+  updateLogImageButtons();
+}
+function shareLogImages(){ shareImagePages(logImagePages, logImageBase); }
+let logImageBase = '연대기_로그';
+async function saveImagePages(pages, base, status){
+  const n = pages.length;
+  if(!n) return;
+  const nameOf = i => n === 1 ? `${base}.png` : `${base}_${i + 1}.png`;
+  let saved = 0;
+  let downloads = null;
+  try{ downloads = await claude.use('downloads'); }catch(e){}
+  if(downloads){
+    try{
+      for(; saved < n; saved++){
+        await downloads.save({ filename: nameOf(saved), data: dataUrlToBlob(pages[saved]) });
+        status.textContent = n > 1 ? `${saved + 1} / ${n}장 저장했어요.` : '이미지를 저장했어요.';
+      }
+      return;
+    }catch(e){
+      if(e && e.code === 'declined'){ if(!saved) status.textContent = ''; return; }
+      // 그 밖의 경우에는 남은 장을 아래 대체 방법으로 시도해요
+    }
+  }
+  try{
+    for(let i = saved; i < n; i++){
+      const url = URL.createObjectURL(dataUrlToBlob(pages[i]));
+      const link = document.createElement('a');
+      link.href = url; link.download = nameOf(i);
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      if(i < n - 1) await new Promise(r => setTimeout(r, 300));
+    }
+    status.textContent = '저장을 시도했어요. 저장되지 않으면 이미지를 길게 누르거나 마우스 오른쪽 버튼으로 저장해주세요.';
+  }catch(e){
+    status.textContent = '이 화면에서는 바로 저장할 수 없어요. 이미지를 길게 누르거나 마우스 오른쪽 버튼으로 저장해주세요.';
+  }
+}
+function saveLogImages(){ return saveImagePages(logImagePages, logImageBase, document.getElementById('logImageStatus')); }
+
 let logExportData = null;
-async function exportArchive(id){
+// 선택 모드에서 고른 줄만 이미지로: 내보내기 창을 "이미지" 탭으로 바로 열어요
+let selImagePages = [], selImageBase = '연대기_로그', selImageToken = 0;
+async function openSelectedLinesImage(){
+  const a = archives.find(x => x.id === currentId);
+  if(!a) return;
+  if(!selectedLineIndices.size){ alert('이미지로 저장할 줄을 먼저 선택해주세요.'); return; }
+  const lines = [...selectedLineIndices].sort((x, y) => x - y).map(i => a.lines[i]).filter(Boolean);
+  const list = document.getElementById('selImgList');
+  const info = document.getElementById('selImgInfo');
+  const saveBtn = document.getElementById('selImgSaveBtn');
+  const shareBtn = document.getElementById('selImgShareBtn');
+  document.getElementById('selImgStatus').textContent = '';
+  info.textContent = '';
+  saveBtn.style.display = 'none'; shareBtn.style.display = 'none';
+  selImagePages = [];
+  selImageBase = ((a.name || '연대기 로그').replace(/[\\/:*?"<>|]/g, '_').trim() || '연대기 로그') + '_선택';
+  list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">이미지를 만드는 중...</div>';
+  document.getElementById('selectedImageOverlay').classList.add('show');
+  const token = ++selImageToken;
+  try{
+    const pages = await renderLogImages(lines);
+    if(token !== selImageToken) return;
+    selImagePages = pages;
+    list.innerHTML = pages.map((src, i) => `<img src="${src}" alt="선택한 줄 이미지 ${i + 1}" style="width:100%; display:block; border:1px solid var(--line); border-radius:6px;">`).join('');
+    info.textContent = `이미지 ${pages.length}장`;
+    saveBtn.style.display = '';
+    if(imageShareSupported()) shareBtn.style.display = '';
+  }catch(e){
+    if(token === selImageToken) list.innerHTML = '<div style="color:var(--muted); font-size:.85rem; padding:20px 4px;">이미지를 만들지 못했어요.</div>';
+  }
+}
+function closeSelectedImage(){
+  selImageToken++;
+  selImagePages = [];
+  document.getElementById('selectedImageOverlay').classList.remove('show');
+  document.getElementById('selImgList').innerHTML = '';
+}
+function saveSelectedImages(){ return saveImagePages(selImagePages, selImageBase, document.getElementById('selImgStatus')); }
+function shareSelectedImages(){ shareImagePages(selImagePages, selImageBase); }
+async function exportArchive(id, startMode = 'code'){
   const a = archives.find(x => x.id === id);
   if(!a) return;
   const plain = a.lines.map(exportRawLine).join('\n');
@@ -1986,22 +2423,34 @@ async function exportArchive(id){
   };
   const code = await encodeBackupCode(JSON.stringify(payload));
   logExportData = { code, text: plain };
+  logImageToken++; logImageReady = false; logImagePages = [];
+  resetLogPdf();
   showTextExportModal(code, true);
   const tabs = document.getElementById('textExportTabs');
   if(tabs) tabs.style.display = '';
-  setLogExportMode('code');
+  setLogExportMode(startMode);
 }
 function setLogExportMode(mode){
   if(!logExportData) return;
   const area = document.getElementById('textExportArea');
   const desc = document.getElementById('textExportDesc');
   const copyBtn = document.getElementById('textExportCopyBtn');
+  const isImage = mode === 'image', isPdf = mode === 'pdf', isText = !isImage && !isPdf;
+  area.style.display = isText ? '' : 'none';
+  if(desc) desc.style.display = isText ? '' : 'none';
+  if(copyBtn) copyBtn.style.display = isText ? '' : 'none';
+  document.getElementById('textExportImagePanel').style.display = isImage ? '' : 'none';
+  document.getElementById('textExportPdfPanel').style.display = isPdf ? '' : 'none';
+  document.querySelectorAll('#textExportTabs .posBtn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  // 탭마다 필요한 버튼만 보이게 해요
+  ['logImageShareBtn', 'logImageSaveBtn', 'logPdfSaveBtn', 'logPdfOpenBtn'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  if(isImage){ loadLogImagePanel(); return; }
+  if(isPdf){ loadLogPdfPanel(); return; }
   area.value = mode === 'code' ? logExportData.code : logExportData.text;
   if(desc) desc.textContent = mode === 'code'
     ? '아래 코드를 복사해서 공유하세요. 받는 쪽에서 사이드바의 "기록 가져오기"에 붙여넣으면 이 로그가 새 기록으로 추가돼요.'
     : '아래 내용을 복사해서 메모장이나 메일 등에 저장해주세요.';
   if(copyBtn) copyBtn.textContent = mode === 'code' ? '코드 복사' : '전체 복사';
-  document.querySelectorAll('#textExportTabs .posBtn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
   area.focus(); area.select();
 }
 function openImportLog(){
